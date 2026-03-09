@@ -592,7 +592,7 @@ function parseStatement(sheet){
             latestNo, latestBalance, latestDate }
   */
   if(!sheet)return{map:{},latestNo:'',latestBalance:0,latestDate:''};
-  const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false,cellDates:true});
+  const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:true,cellDates:true});
   const hi=findHdrRow(rows,['TYPE','DESCRIPTION','OUT']);
   const hdr=rows[hi].map(c=>String(c||'').trim().toUpperCase());
   const iNo=hdr.findIndex(h2=>h2==='NO.');
@@ -607,11 +607,11 @@ function parseStatement(sheet){
     const r=rows[i];
     const type=String(r[iType]||'').trim().toUpperCase();
     const desc=String(r[iDesc]||'').trim();
-    const out=parseFloat(r[iOut])||0;
+    const out=parseFloat(String(r[iOut]||'').replace(/,/g,''))||0;
     const no=String(r[iNo]||'').trim();
     const noNum=parseFloat(no)||0;
     const dt=fmtExcelDate(r[iDate]);
-    const bal=parseFloat(r[iBal])||0;
+    const bal=parseFloat(String(r[iBal]||'').replace(/,/g,''))||0;
     /* ติดตาม ลำดับล่าสุด + ยอดคงเหลือ (เอา row สุดท้ายที่มี NO. จริง) */
     if(noNum>0){
       if(noNum>=latestNoNum){
@@ -845,6 +845,7 @@ function renderStatsVessel(){
   }
   document.getElementById('sBar').innerHTML=bar;
 }
+let _vesselFilter='';
 function renderVesselView(){
   if(!VESSEL.length){
     document.getElementById('vesselWrap').innerHTML='<div class="placeholder"><div class="icon">🚢</div><p>ยังไม่มีข้อมูลเรือ — กรุณาใส่พาธไฟล์ VESSEL_MANAGE.xlsm ในหน้าตั้งค่า</p></div>';
@@ -858,14 +859,29 @@ function renderVesselView(){
     groups[key].rows.push(r);
     groups[key].totalVol+=r.vol;
   });
-  /* เรียงตามวันที่ (เก่า→ใหม่) */
-  const sorted=Object.values(groups).sort((a,b)=>{
+  /* เรียงตามวันที่ (ใหม่→เก่า) */
+  let sorted=Object.values(groups).sort((a,b)=>{
     const da=parsePickupDate(a.date),db2=parsePickupDate(b.date);
-    return da-db2;
+    return db2-da;
   });
+  /* รายชื่อเรือทั้งหมด (เรียง A-Z) */
+  const allVessels=[...new Set(sorted.map(g=>g.vessel))].sort();
+  /* กรองตาม dropdown */
+  if(_vesselFilter) sorted=sorted.filter(g=>g.vessel===_vesselFilter);
   const hasFees=Object.keys(FEES).length>0;
   function fmtRM(n){return n>0?n.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2}):'-';}
-  let out='';
+  /* สร้าง Dropdown bar */
+  let opts='<option value="">🚢 เรือทั้งหมด ('+allVessels.length+' ลำ)</option>';
+  allVessels.forEach(v=>{opts+='<option value="'+h(v)+'"'+(v===_vesselFilter?' selected':'')+'>'+h(v)+'</option>';});
+  let out='<div style="padding:4px 0 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
+    +'<label style="font-size:12px;color:#475569;font-weight:600;">กรองเรือ:</label>'
+    +'<select id="vslFilterSel" onchange="_vesselFilter=this.value;renderVesselView();" '
+    +'style="padding:6px 12px;border:1.5px solid #bfdbfe;border-radius:8px;font-size:13px;background:#fff;color:#1e40af;cursor:pointer;min-width:220px;">'
+    +opts+'</select>'
+    +(sorted.length!==allVessels.length
+      ?'<span style="font-size:11px;color:#dc2626;font-weight:600;">แสดง '+sorted.length+' จาก '+Object.values(groups).length+' รอบ</span>'
+      :'<span style="font-size:11px;color:#64748b;">'+Object.values(groups).length+' รอบการส่ง</span>')
+    +'</div>';
   sorted.forEach(g=>{
     /* คำนวณ fees ของเรือลำนี้ */
     let sumOcf=0,sumTlx=0;
