@@ -959,20 +959,22 @@ function renderTabs(){
     document.getElementById('mTabs').innerHTML=out;
     if(!SM&&months.length)selMonth(months[0]);
   } else {
-    /* โหมดโรงงาน — จัดกลุ่มตาม customer */
-    const factMap={};
+    /* โหมดโรงงาน — จัดกลุ่มตาม prefix (BSW, TWI, OGM, INV...) */
+    const pfxMap={};
     FLAT.forEach(d=>{
-      const fac=d.customer||'-';
-      if(!factMap[fac])factMap[fac]={count:0,ctr:0};
-      factMap[fac].count++;factMap[fac].ctr+=d.total_actual;
+      if(!pfxMap[d.prefix])pfxMap[d.prefix]={count:0,ctr:0};
+      pfxMap[d.prefix].count++;pfxMap[d.prefix].ctr+=d.total_actual;
     });
-    const facts=Object.keys(factMap).sort((a,b)=>a==='-'?1:b==='-'?-1:a.localeCompare(b,'th'));
+    const pfxs=Object.keys(pfxMap).sort();
     let out=toggle;
-    facts.forEach(fac=>{
-      out+='<div class="mtab'+(SF===fac?' active':'')+'" data-fac="'+h(fac)+'">'+h(fac)+'<br><span style="font-size:10px;opacity:.7;">'+factMap[fac].count+' INV</span></div>';
+    pfxs.forEach(pfx=>{
+      const s=pst(pfx);
+      out+='<div class="mtab'+(SF===pfx?' active':'')+'" data-fac="'+h(pfx)+'" style="border-left-color:'+(SF===pfx?'#63b3ed':'transparent')+';">'
+        +'<span style="display:inline-block;background:'+s.bg+';color:'+s.tx+';border-radius:4px;padding:1px 6px;font-size:10px;font-weight:800;margin-bottom:2px;">'+h(pfx)+'</span>'
+        +'<br><span style="font-size:10px;opacity:.7;">'+pfxMap[pfx].count+' INV</span></div>';
     });
     document.getElementById('mTabs').innerHTML=out;
-    if(!SF&&facts.length)selFactory(facts[0]);
+    if(!SF&&pfxs.length)selFactory(pfxs[0]);
   }
 }
 function selMonth(m){
@@ -1011,32 +1013,19 @@ function selPrefix(m,pfx){
 }
 function setMainViewMode(mode){
   mainViewMode=mode; SM=null; SP=null; SF=null; SI=null;
-  document.getElementById('mHead').innerHTML='<span class="bc-cur">'+(mode==='month'?'เลือกเดือน':'เลือกโรงงาน')+'</span>';
+  document.getElementById('mHead').innerHTML='<span class="bc-cur">'+(mode==='month'?'เลือกเดือน':'เลือก Prefix')+'</span>';
   document.getElementById('mBody').innerHTML='';
-  document.getElementById('dPanel').innerHTML='<div class="placeholder"><div class="icon">📦</div><p>'+(mode==='month'?'เลือกเดือน → Prefix → อินวอยซ์':'เลือกโรงงาน → Prefix → อินวอยซ์')+'</p></div>';
+  document.getElementById('dPanel').innerHTML='<div class="placeholder"><div class="icon">📦</div><p>'+(mode==='month'?'เลือกเดือน → Prefix → อินวอยซ์':'เลือก Prefix → อินวอยซ์')+'</p></div>';
   renderTabs();
 }
-function selFactory(fac){
-  SF=fac; SP=null; SI=null;
-  document.querySelectorAll('#mTabs .mtab').forEach(el=>el.classList.toggle('active',el.dataset.fac===fac));
-  document.getElementById('mHead').innerHTML='<span class="bc-cur">🏭 '+h(fac)+'</span>';
-  const invs=FLAT.filter(d=>(d.customer||'-')===fac);
-  const pfxMap={};
-  invs.forEach(d=>{if(!pfxMap[d.prefix])pfxMap[d.prefix]={count:0,ctr:0};pfxMap[d.prefix].count++;pfxMap[d.prefix].ctr+=d.total_actual;});
-  let out='';
-  Object.keys(pfxMap).sort().forEach(pfx=>{
-    const s=pst(pfx);
-    out+='<div class="pfx-row" data-pfx="'+pfx+'"><span class="pfx-name" style="color:'+s.tx+'">'+h(pfx)+'</span> <span class="pfx-count">'+pfxMap[pfx].count+' INV · '+pfxMap[pfx].ctr+' ตู้</span></div>';
-  });
-  document.getElementById('mBody').innerHTML=out;
-  document.getElementById('dPanel').innerHTML='<div class="placeholder"><div class="icon">👈</div><p>เลือก Prefix</p></div>';
-  const mp=document.getElementById('midPanel');if(mp)mp.classList.add('open');
-}
-function selFactoryPrefix(fac,pfx){
-  SP=pfx; SI=null;
+function selFactory(pfx){
+  /* โหมด prefix — แสดงอินวอยซ์ทั้งหมดของ prefix นี้โดยตรง */
+  SF=pfx; SI=null;
+  document.querySelectorAll('#mTabs .mtab').forEach(el=>el.classList.toggle('active',el.dataset.fac===pfx));
+  const s=pst(pfx);
   document.getElementById('mHead').innerHTML=
-    '<div class="bc"><span class="bc-item" data-back-fac="'+h(fac)+'">🏭 '+h(fac)+'</span><span class="bc-sep">›</span><span class="bc-cur">'+h(pfx)+'</span></div>';
-  const invs=FLAT.filter(d=>(d.customer||'-')===fac&&d.prefix===pfx);
+    '<span class="bc-cur"><span style="background:'+s.bg+';color:'+s.tx+';border-radius:4px;padding:1px 8px;font-weight:800;">'+h(pfx)+'</span></span>';
+  const invs=FLAT.filter(d=>d.prefix===pfx).sort((a,b)=>a.inv.localeCompare(b.inv));
   let out='';
   invs.forEach(d=>{
     const ctrOk=d.total_expected>0&&d.total_actual>=d.total_expected;
@@ -1044,10 +1033,12 @@ function selFactoryPrefix(fac,pfx){
     const badge=docOk?'<span class="ir-badge" style="background:#dcfce7;color:#166534">✔</span>':
       (ctrOk?'<span class="ir-badge" style="background:#ede9fe;color:#7c3aed">~</span>':
       '<span class="ir-badge" style="background:#fee2e2;color:#991b1b">'+d.total_actual+'/'+d.total_expected+'</span>');
-    out+='<div class="ir" data-id="'+d.id+'"><span class="ir-inv">'+h(d.inv)+'</span>'+badge+'</div>';
+    const mLabel='<span style="font-size:9px;color:#94a3b8;margin-left:4px;">'+MF[d.month]+'</span>';
+    out+='<div class="ir" data-id="'+d.id+'"><span class="ir-inv">'+h(d.inv)+'</span>'+badge+mLabel+'</div>';
   });
-  document.getElementById('mBody').innerHTML=out;
+  document.getElementById('mBody').innerHTML=out||'<div style="padding:12px;color:#94a3b8;font-size:12px;">ไม่พบข้อมูล</div>';
   document.getElementById('dPanel').innerHTML='<div class="placeholder"><div class="icon">👈</div><p>เลือกอินวอยซ์</p></div>';
+  const mp=document.getElementById('midPanel');if(mp)mp.classList.add('open');
 }
 function selInv(id){
   SI=id;
@@ -1356,11 +1347,7 @@ document.getElementById('mTabs').addEventListener('click',e=>{
 });
 document.getElementById('mBody').addEventListener('click',e=>{
   const pfx=e.target.closest('.pfx-row[data-pfx]');
-  if(pfx){
-    if(mainViewMode==='factory')selFactoryPrefix(SF,pfx.dataset.pfx);
-    else selPrefix(SM,pfx.dataset.pfx);
-    return;
-  }
+  if(pfx){selPrefix(SM,pfx.dataset.pfx);return;}
   const ir=e.target.closest('.ir[data-id]');if(ir)selInv(parseInt(ir.dataset.id));
 });
 document.getElementById('mHead').addEventListener('click',e=>{
