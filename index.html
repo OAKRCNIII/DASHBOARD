@@ -492,7 +492,7 @@ function parseAllInv(sheet){
 function parseDatabase(sheet){
   if(!sheet)return{};
   const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false,cellDates:true});
-  const hi=findHdrRow(rows,['ทะเบียน','DATABASE']);
+  const hi=findHdrRow(rows,['ทะเบียนรถ','โรงงาน(inv']);
   const hdr=rows[hi].map(c=>String(c||'').trim());
   const iTrk=colOf(hdr,['ทะเบียน']);
   const iInv=colOf(hdr,['โรงงาน(inv']);
