@@ -8,7 +8,6 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;font-size:13px;overscroll-behavior:none;}
-
 /* ===== SETUP SCREEN ===== */
 #setupScreen{display:flex;align-items:center;justify-content:center;min-height:100dvh;background:linear-gradient(135deg,#1a365d,#2b6cb0);padding:20px;}
 .setup-card{background:white;border-radius:16px;padding:28px 24px;width:100%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,.25);}
@@ -26,7 +25,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
 .setup-steps{background:#f8fafc;border-radius:8px;padding:12px 14px;margin-bottom:18px;border:1px solid #e2e8f0;}
 .setup-steps li{font-size:11px;color:#374151;margin-bottom:5px;padding-left:4px;}
 .setup-steps li:last-child{margin-bottom:0;}
-
 /* ===== LOAD SCREEN ===== */
 #loadScreen{display:none;align-items:center;justify-content:center;min-height:100dvh;background:#f0f4f8;flex-direction:column;gap:16px;}
 .spinner{width:44px;height:44px;border:4px solid #e2e8f0;border-top-color:#2b6cb0;border-radius:50%;animation:spin .8s linear infinite;}
@@ -35,7 +33,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
 .load-sub{font-size:11px;color:#94a3b8;}
 .load-err{background:#fee2e2;color:#991b1b;border-radius:8px;padding:12px 16px;font-size:12px;text-align:center;max-width:320px;}
 .retry-btn{background:#2b6cb0;color:white;border:none;border-radius:6px;padding:8px 18px;font-size:12px;font-weight:700;cursor:pointer;margin-top:8px;}
-
 /* ===== APP ===== */
 #app{display:none;flex-direction:column;height:100dvh;}
 .header{background:linear-gradient(135deg,#1a365d,#2b6cb0);color:white;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0;}
@@ -45,14 +42,12 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
 .hdr-btn{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);color:white;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;font-weight:600;transition:all .15s;}
 .hdr-btn:hover{background:rgba(255,255,255,.35);}
 .last-upd{font-size:10px;opacity:.65;}
-
 /* DESKTOP tabs (hidden on mobile) */
 .htabs{display:flex;gap:5px;padding:8px 16px;background:white;border-bottom:1px solid #e2e8f0;flex-shrink:0;}
 .htab{background:#f1f5f9;border:1px solid #e2e8f0;color:#4a5568;border-radius:7px;padding:5px 12px;cursor:pointer;font-size:12px;font-weight:600;transition:all .15s;white-space:nowrap;}
 .htab.active{background:#1a365d;color:white;border-color:#1a365d;}
 .htab-badge{background:rgba(255,255,255,.3);border-radius:10px;padding:1px 6px;font-size:10px;margin-left:3px;}
 .htab:not(.active) .htab-badge{background:#ef4444;color:white;}
-
 /* STATS BAR */
 .stats-bar{display:flex;gap:8px;padding:8px 16px;background:white;border-bottom:1px solid #e2e8f0;flex-wrap:wrap;flex-shrink:0;overflow-x:auto;}
 .sc{background:#f7fafc;border:1px solid #e2e8f0;border-radius:8px;padding:6px 12px;min-width:100px;flex-shrink:0;}
@@ -61,12 +56,10 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
 .sc .sub2{font-size:9px;color:#a0aec0;}
 .sc-click{cursor:pointer;transition:all .15s;}
 .sc-click:hover{border-color:#93c5fd;box-shadow:0 2px 8px rgba(43,108,176,.15);transform:translateY(-1px);}
-
 /* VIEWS CONTAINER */
 .views{flex:1;overflow:hidden;position:relative;}
 .view{display:none;position:absolute;inset:0;overflow:hidden;}
 .view.active{display:flex;}
-
 /* MAIN VIEW */
 .main-view{flex-direction:row;}
 .month-tabs{width:120px;background:#1a365d;display:flex;flex-direction:column;padding:8px 0;gap:2px;flex-shrink:0;overflow-y:auto;}
@@ -98,7 +91,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
 .bc-item:hover{color:#2b6cb0;text-decoration:underline;}
 .bc-sep{font-size:10px;color:#a0aec0;}
 .bc-cur{font-size:10px;font-weight:700;color:#1a365d;}
-
 /* PENDING VIEW */
 .pending-view{flex-direction:row;}
 .pv-wrap{display:flex;flex:1;overflow:hidden;}
@@ -117,7 +109,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
 .prog-labels{display:flex;justify-content:space-between;margin-top:2px;}
 .prog-done{font-size:9px;color:#22c55e;}
 .prog-left{font-size:9px;color:#f97316;}
-
 /* STOCK VIEW */
 .stock-view{flex-direction:column;}
 .stock-body{display:flex;flex:1;overflow:hidden;}
@@ -133,7 +124,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
 .lock-pip{background:#dcfce7;color:#166534;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;}
 .lock-other{background:#f1f5f9;color:#475569;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;}
 .stock-right{flex:1;overflow-y:auto;padding:14px;}
-
 /* FACTORY VIEW */
 .factory-view{flex-direction:column;overflow-y:auto;background:#f0f4f8;}
 .factory-wrap{max-width:820px;margin:0 auto;padding:14px 16px;}
@@ -160,7 +150,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
 .ftbl .ftrk-cell{color:#374151;font-family:'Courier New',monospace;font-size:12px;font-weight:600;}
 .ftbl tbody tr:hover td{background:#f0f9ff;}
 .finv-badge{display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;margin-right:6px;}
-
 /* STAT MODAL */
 .smodal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;align-items:center;justify-content:center;padding:16px;}
 .smodal-bg.open{display:flex;}
@@ -176,14 +165,12 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
 .sm-ctr{font-size:10px;color:#64748b;min-width:52px;text-align:right;}
 .sm-ctr.done{color:#16a34a;font-weight:700;}
 .sm-ctr.incomplete{color:#d97706;font-weight:700;}
-
 /* MOBILE BOTTOM TAB BAR */
 .mob-tabs{display:none;position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid #e2e8f0;z-index:100;padding-bottom:env(safe-area-inset-bottom,0px);}
 .mob-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px 6px;cursor:pointer;color:#94a3b8;font-size:9px;font-weight:700;gap:2px;transition:color .15s;}
 .mob-tab.active{color:#2b6cb0;}
 .mob-tab-icon{font-size:20px;line-height:1;}
 .mob-badge{background:#ef4444;color:white;border-radius:8px;padding:0 4px;font-size:9px;font-weight:700;min-width:14px;text-align:center;margin-left:2px;}
-
 /* RESPONSIVE — MOBILE */
 @media(max-width:600px){
   .htabs{display:none;}
@@ -220,14 +207,12 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
 </style>
 </head>
 <body>
-
 <!-- ===== SETUP SCREEN ===== -->
 <div id="setupScreen">
   <div class="setup-card">
     <div class="setup-logo">📦</div>
     <div class="setup-title">Dashboard ใบยกตู้</div>
     <div class="setup-sub">เชื่อมต่อกับ Dropbox เพื่อดึงข้อมูลแบบ Real-time</div>
-
     <div class="setup-steps">
       <ol style="padding-left:16px;">
         <li>ไปที่ <strong>dropbox.com/developers/apps</strong> → สร้าง App ใหม่</li>
@@ -237,7 +222,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
         <li>กลับมาใส่ข้อมูลด้านล่าง แล้วกด เชื่อมต่อ</li>
       </ol>
     </div>
-
     <div class="setup-section">
       <div class="setup-label">Dropbox App Key</div>
       <input class="setup-input" id="inAppKey" type="text" placeholder="xxxxxxxxxxxx">
@@ -255,7 +239,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
     <div id="setupErr" style="font-size:11px;color:#dc2626;text-align:center;margin-top:8px;display:none;"></div>
   </div>
 </div>
-
 <!-- ===== LOAD SCREEN ===== -->
 <div id="loadScreen">
   <div class="spinner"></div>
@@ -267,7 +250,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
     <button class="retry-btn" style="background:#64748b;margin-left:6px;" id="resetBtn">ตั้งค่าใหม่</button>
   </div>
 </div>
-
 <!-- ===== DASHBOARD ===== -->
 <div id="app" style="display:none;flex-direction:column;height:100dvh;">
   <div class="header">
@@ -280,7 +262,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
       <button class="hdr-btn" id="settingsBtn">⚙️</button>
     </div>
   </div>
-
   <!-- Desktop tabs -->
   <div class="htabs">
     <button class="htab active" id="htab-main" onclick="switchTab('main')">📊 รายเดือน</button>
@@ -288,9 +269,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
     <button class="htab" id="htab-stock" onclick="switchTab('stock')">📦 STOCK ตู้</button>
     <button class="htab" id="htab-factory" onclick="switchTab('factory')">🏭 เข้าโรงงาน</button>
   </div>
-
   <div class="stats-bar" id="sBar"></div>
-
   <!-- Stat modal -->
   <div class="smodal-bg" id="sModalBg">
     <div class="smodal">
@@ -302,7 +281,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
     </div>
   </div>
   <input type="hidden" id="sModalFilter" value="">
-
   <!-- Views -->
   <div class="views">
     <div class="view main-view active" id="mainView">
@@ -315,14 +293,12 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
         <div class="placeholder"><div class="icon">📦</div><p>เลือกเดือน → Prefix → อินวอยซ์</p></div>
       </div>
     </div>
-
     <div class="view pending-view" id="pendingView">
       <div class="pv-wrap" id="pvWrap">
         <div class="pv-list" id="pvList"></div>
         <div class="pv-detail" id="pvDetail"><div class="placeholder"><div class="icon">⏳</div><p>คลิกอินวอยซ์เพื่อดูรายละเอียด</p></div></div>
       </div>
     </div>
-
     <div class="view stock-view" id="stockView">
       <div class="stock-body" id="stockBody">
         <div class="stock-left">
@@ -334,7 +310,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
         </div>
       </div>
     </div>
-
     <div class="view factory-view" id="factoryView">
       <div class="factory-wrap">
         <div class="factory-topbar">
@@ -355,7 +330,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
       </div>
     </div>
   </div>
-
   <!-- Mobile bottom tabs -->
   <div class="mob-tabs">
     <div class="mob-tab active" id="mtab-main" onclick="switchTab('main')"><div class="mob-tab-icon">📊</div>รายเดือน</div>
@@ -364,7 +338,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
     <div class="mob-tab" id="mtab-factory" onclick="switchTab('factory')"><div class="mob-tab-icon">🏭</div>โรงงาน</div>
   </div>
 </div>
-
 <script>
 /* ===================================================
    HELPERS
@@ -376,17 +349,24 @@ function show(id){document.getElementById(id).style.display='flex';}
 function hide(id){document.getElementById(id).style.display='none';}
 
 /* ===================================================
+   FIX: Encode non-ASCII characters for HTTP headers
+   (แก้ปัญหา Thai characters ใน Dropbox-API-Arg header)
+=================================================== */
+function encodeDropboxArg(obj){
+  return JSON.stringify(obj).replace(/[^\x00-\x7F]/g,function(c){
+    return '\\u'+('0000'+c.charCodeAt(0).toString(16)).slice(-4);
+  });
+}
+
+/* ===================================================
    DROPBOX PKCE OAUTH
 =================================================== */
 function b64url(buf){return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');}
-
 function genVerifier(){const a=new Uint8Array(32);crypto.getRandomValues(a);return b64url(a);}
-
 async function genChallenge(v){
   const d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v));
   return b64url(d);
 }
-
 async function startAuth(){
   const appKey=ls('dbx_app_key');
   if(!appKey){showErr('กรุณาใส่ App Key');return;}
@@ -400,7 +380,6 @@ async function startAuth(){
   });
   window.location.href=url;
 }
-
 async function handleOAuthCallback(){
   const params=new URLSearchParams(window.location.search);
   const code=params.get('code');
@@ -425,7 +404,6 @@ async function handleOAuthCallback(){
     return false;
   }catch(e){return false;}
 }
-
 async function getToken(){
   const exp=parseInt(ls('dbx_token_exp')||'0');
   const refresh=ls('dbx_refresh_token');
@@ -446,13 +424,16 @@ async function getToken(){
   if(!tok)throw new Error('Token หมดอายุ กรุณาเชื่อมต่อใหม่');
   return tok;
 }
-
 async function dbxDownload(path){
   setLoad('กำลังดาวน์โหลด: '+path.split('/').pop());
   const token=await getToken();
+  /* ใช้ encodeDropboxArg() แทน JSON.stringify() เพื่อรองรับพาธภาษาไทย */
   const resp=await fetch('https://content.dropboxapi.com/2/files/download',{
     method:'POST',
-    headers:{'Authorization':'Bearer '+token,'Dropbox-API-Arg':JSON.stringify({path})}
+    headers:{
+      'Authorization':'Bearer '+token,
+      'Dropbox-API-Arg':encodeDropboxArg({path:path})
+    }
   });
   if(!resp.ok){
     const err=await resp.text();
@@ -460,7 +441,6 @@ async function dbxDownload(path){
   }
   return await resp.arrayBuffer();
 }
-
 /* ===================================================
    EXCEL PARSING
 =================================================== */
@@ -477,7 +457,6 @@ function fmtExcelDate(v){
   return s;
 }
 function pad(n){return String(n).padStart(2,'0');}
-
 function findHdrRow(rows,kws){
   for(let i=0;i<Math.min(rows.length,15);i++){
     if(rows[i].some(c=>kws.some(k=>String(c||'').trim().includes(k))))return i;
@@ -485,7 +464,6 @@ function findHdrRow(rows,kws){
   return 0;
 }
 function colOf(hdrs,kws){return hdrs.findIndex(h=>kws.some(k=>h.includes(k)));}
-
 function parseAllInv(sheet){
   if(!sheet)return[];
   const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false});
@@ -511,7 +489,6 @@ function parseAllInv(sheet){
   }
   return out;
 }
-
 function parseDatabase(sheet){
   if(!sheet)return{};
   const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false,cellDates:true});
@@ -523,7 +500,6 @@ function parseDatabase(sheet){
   const iCtrN=colOf(hdr,['เบอร์ตู้']);
   const iCado=colOf(hdr,['CADO']);
   const iPickup=colOf(hdr,['DATE PICK','PICKUP']);
-  // last column that exactly starts with 'โรงงาน' (not โรงงาน(inv))
   let iFactory=-1;
   hdr.forEach((h2,idx)=>{if(h2.trim()==='โรงงาน')iFactory=idx;});
   const map={};
@@ -543,7 +519,6 @@ function parseDatabase(sheet){
   }
   return map;
 }
-
 function parseBkg(sheet){
   if(!sheet)return{containers:[],bkgGroups:[],stats:{total:0,used:0,available:0,mmfAvail:0,pipAvail:0}};
   const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false});
@@ -582,7 +557,6 @@ function parseBkg(sheet){
   const pipAvail=containers.filter(c=>c.status.toUpperCase()!=='USED'&&c.lockFor.toUpperCase().includes('PIP')).length;
   return{containers,bkgGroups,stats:{total,used,available,mmfAvail,pipAvail}};
 }
-
 function buildFlat(allInv,dbMap){
   function norm(s){return s.replace(/\s+/g,'').toUpperCase();}
   const normDb={};
@@ -603,15 +577,11 @@ function buildFlat(allInv,dbMap){
   });
   return{byMonth,flat};
 }
-
 async function loadData(){
   const invPath=ls('dbx_inv_path');
   const bkgPath=ls('dbx_bkg_path');
   if(!invPath||!bkgPath)throw new Error('ไม่พบพาธไฟล์ กรุณาตั้งค่าใหม่');
-
-  // Fetch both files in parallel
   const [invBuf,bkgBuf]=await Promise.all([dbxDownload(invPath),dbxDownload(bkgPath)]);
-
   setLoad('กำลังประมวลผลข้อมูล...');
   const invWb=XLSX.read(invBuf,{type:'array',cellDates:true});
   const invSheet=invWb.SheetNames.find(n=>n.includes('ALL_INV')||n.includes('INV'))||invWb.SheetNames[0];
@@ -619,14 +589,11 @@ async function loadData(){
   const allInv=parseAllInv(invWb.Sheets[invSheet]);
   const dbMap=parseDatabase(invWb.Sheets[dbSheet]);
   const {byMonth,flat}=buildFlat(allInv,dbMap);
-
   const bkgWb=XLSX.read(bkgBuf,{type:'array'});
   const bkgSheet=bkgWb.SheetNames.find(n=>n.toUpperCase().includes('BKG'))||bkgWb.SheetNames[0];
   const stockData=parseBkg(bkgWb.Sheets[bkgSheet]);
-
   return{byMonth,flat,stock:stockData};
 }
-
 /* ===================================================
    DASHBOARD STATE & RENDER
 =================================================== */
@@ -639,7 +606,6 @@ const PFXC={
   DEF:{bg:'#f1f5f9',tx:'#475569',bd:'#e2e8f0'}
 };
 function pst(pfx){return PFXC[pfx]||PFXC.DEF;}
-
 function switchTab(tab){
   curTab=tab;
   ['main','pending','stock','factory'].forEach(t=>{
@@ -652,8 +618,6 @@ function switchTab(tab){
   if(tab==='main'){renderTabs();renderStatsMain();}
   if(tab==='factory'){renderFactoryView();renderStatsMain();}
 }
-
-/* ---- STATS ---- */
 function kc(l,v,s,c,filter){
   const cls='sc'+(filter?' sc-click':'');
   const attr=filter?' data-filter="'+filter+'"':'';
@@ -680,8 +644,6 @@ function renderStatsStock(){
     kc('ลานตู้ MMF',s.mmfAvail||0,'ตู้ว่าง','#1e3a8a',null)+
     kc('ลานตู้ PIP',s.pipAvail||0,'ตู้ว่าง','#14532d',null);
 }
-
-/* ---- MAIN VIEW ---- */
 function renderTabs(){
   const months=Object.keys(BY_MONTH).sort((a,b)=>parseInt(a)||99-(parseInt(b)||99));
   let out='';
@@ -751,8 +713,6 @@ function showInvDetail(id,panelId){
   }else{out+='<div style="color:#94a3b8;font-size:12px;">ยังไม่มีข้อมูลตู้</div>';}
   document.getElementById(panelId).innerHTML=out;
 }
-
-/* ---- PENDING VIEW ---- */
 function renderPendingList(){
   const pending=FLAT.filter(d=>d.doc_status!=='ปล่อยเอกสารแล้ว').sort((a,b)=>a.month===b.month?0:(a.month<b.month?-1:1));
   const incomplCtr=pending.filter(d=>d.total_expected>0&&d.total_actual<d.total_expected);
@@ -783,8 +743,6 @@ function selPending(id){
   if(isMob)document.getElementById('pvWrap').classList.add('detail-open');
   setTimeout(()=>{const el=document.querySelector('#pvList .pv-card.active');if(el)el.scrollIntoView({block:'nearest'});},50);
 }
-
-/* ---- STOCK VIEW ---- */
 function lockBadge(lf){
   if(lf.toUpperCase().includes('MMF'))return '<span class="lock-mmf">'+h(lf)+'</span>';
   if(lf.toUpperCase().includes('PIP'))return '<span class="lock-pip">'+h(lf)+'</span>';
@@ -827,14 +785,11 @@ function selBkg(no){
   out+='</tbody></table>';
   document.getElementById('stockRight').innerHTML=out;
 }
-
-/* ---- FACTORY VIEW ---- */
 function parsePickupDate(s){if(!s||s==='-')return 0;const p=s.split('/');return p.length===3?parseInt(p[2])*10000+parseInt(p[1])*100+parseInt(p[0]):0;}
 function isoToInt(s){if(!s)return 0;const p=s.split('-');return p.length===3?parseInt(p[0])*10000+parseInt(p[1])*100+parseInt(p[2]):0;}
 function todayIso(){const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
 function daysAgoIso(n){const d=new Date();d.setDate(d.getDate()-n);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
 function monthStartIso(){const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-01';}
-
 function renderFactoryView(){
   const fromVal=document.getElementById('fDateFrom').value;
   const toVal=document.getElementById('fDateTo').value;
@@ -878,8 +833,6 @@ function renderFactoryView(){
   document.getElementById('factoryTitle').textContent='🏭 สรุปตู้เข้าโรงงาน'+rl;
   document.getElementById('factorySub').textContent=totalTrucks+' ตู้ · '+totalInvs+' อินวอยซ์ · '+dates.length+' วันรับตู้';
 }
-
-/* ---- STAT MODAL ---- */
 function showStatModal(filter){
   let list,title,color;
   if(filter==='pending'){
@@ -904,10 +857,6 @@ function showStatModal(filter){
   document.getElementById('sModalFilter').value=filter;
   document.getElementById('sModalBg').classList.add('open');
 }
-
-/* ===================================================
-   APP INIT
-=================================================== */
 function setLoad(txt,sub){
   document.getElementById('loadText').textContent=txt||'กำลังโหลด...';
   document.getElementById('loadSub').textContent=sub||'';
@@ -923,7 +872,6 @@ function showSetup(errMsg){
   document.getElementById('setupScreen').style.display='flex';
   if(errMsg){document.getElementById('setupErr').textContent=errMsg;document.getElementById('setupErr').style.display='block';}
   document.getElementById('thisUrl').textContent=window.location.origin+window.location.pathname;
-  // Pre-fill saved values
   const saved=['dbx_app_key','dbx_inv_path','dbx_bkg_path'];
   const ids=['inAppKey','inInvPath','inBkgPath'];
   saved.forEach((k,i)=>{const v=ls(k);if(v)document.getElementById(ids[i]).value=v;});
@@ -937,9 +885,7 @@ function showDashboard(data){
   renderTabs();renderStatsMain();
   const m=Object.keys(BY_MONTH).sort()[0];if(m)selMonth(m);
 }
-
 async function initApp(){
-  // Check if coming back from OAuth
   const code=new URLSearchParams(window.location.search).get('code');
   const err=new URLSearchParams(window.location.search).get('error');
   if(err){showSetup('Dropbox ปฏิเสธการเชื่อมต่อ: '+err);return;}
@@ -952,7 +898,6 @@ async function initApp(){
   }
   const hasToken=ls('dbx_refresh_token')||ls('dbx_access_token');
   if(!hasToken){showSetup();return;}
-  // Try loading data
   document.getElementById('setupScreen').style.display='none';
   document.getElementById('loadScreen').style.display='flex';
   try{
@@ -960,7 +905,6 @@ async function initApp(){
     showDashboard(data);
   }catch(e){
     if(e.message.includes('token')||e.message.includes('401')||e.message.includes('Token')){
-      // Clear tokens and ask to reconnect
       ls('dbx_access_token','');ls('dbx_refresh_token','');
       showSetup('Session หมดอายุ กรุณาเชื่อมต่อ Dropbox ใหม่');
     }else{
@@ -969,10 +913,7 @@ async function initApp(){
     }
   }
 }
-
-/* ===================================================
-   EVENT LISTENERS
-=================================================== */
+/* EVENT LISTENERS */
 document.getElementById('connectBtn').addEventListener('click',async()=>{
   const appKey=document.getElementById('inAppKey').value.trim();
   const invPath=document.getElementById('inInvPath').value.trim();
@@ -982,7 +923,6 @@ document.getElementById('connectBtn').addEventListener('click',async()=>{
   ls('dbx_app_key',appKey);ls('dbx_inv_path',invPath);ls('dbx_bkg_path',bkgPath);
   await startAuth();
 });
-
 document.getElementById('refreshBtn').addEventListener('click',async()=>{
   document.getElementById('app').style.display='none';
   document.getElementById('loadScreen').style.display='flex';
@@ -993,7 +933,6 @@ document.getElementById('refreshBtn').addEventListener('click',async()=>{
   try{const data=await loadData();showDashboard(data);}
   catch(e){showErr(e.message);}
 });
-
 document.getElementById('settingsBtn').addEventListener('click',()=>{
   if(confirm('ล้างการตั้งค่าและเชื่อมต่อ Dropbox ใหม่?')){
     ['dbx_access_token','dbx_refresh_token','dbx_token_exp','dbx_app_key','dbx_inv_path','dbx_bkg_path','pkce_verifier'].forEach(k=>localStorage.removeItem(k));
@@ -1001,7 +940,6 @@ document.getElementById('settingsBtn').addEventListener('click',()=>{
     showSetup();
   }
 });
-
 document.getElementById('retryBtn').addEventListener('click',async()=>{
   document.getElementById('loadErr').style.display='none';
   document.getElementById('loadText').style.display='block';
@@ -1009,12 +947,10 @@ document.getElementById('retryBtn').addEventListener('click',async()=>{
   setLoad('กำลังลองใหม่...');
   try{const data=await loadData();showDashboard(data);}catch(e){showErr(e.message);}
 });
-
 document.getElementById('resetBtn').addEventListener('click',()=>{
   ['dbx_access_token','dbx_refresh_token','dbx_token_exp','pkce_verifier'].forEach(k=>localStorage.removeItem(k));
   document.getElementById('loadErr').style.display='none';showSetup();
 });
-
 document.getElementById('sBar').addEventListener('click',e=>{
   const sc=e.target.closest('.sc-click[data-filter]');if(sc)showStatModal(sc.dataset.filter);
 });
@@ -1025,8 +961,6 @@ document.getElementById('sModalBody').addEventListener('click',e=>{
   document.getElementById('sModalBg').classList.remove('open');
   const id=parseInt(r.dataset.id);switchTab('pending');setTimeout(()=>selPending(id),80);
 });
-
-// Main view clicks
 document.getElementById('mTabs').addEventListener('click',e=>{const t=e.target.closest('.mtab[data-m]');if(t)selMonth(t.dataset.m);});
 document.getElementById('mBody').addEventListener('click',e=>{
   const pfx=e.target.closest('.pfx-row[data-pfx]');if(pfx){selPrefix(SM,pfx.dataset.pfx);return;}
@@ -1038,12 +972,8 @@ document.getElementById('mHead').addEventListener('click',e=>{
 document.getElementById('dPanel').addEventListener('click',e=>{const ir=e.target.closest('.ir[data-id]');if(ir)selInv(parseInt(ir.dataset.id));});
 document.getElementById('pvList').addEventListener('click',e=>{const c=e.target.closest('.pv-card[data-id]');if(c)selPending(parseInt(c.dataset.id));});
 document.getElementById('pvDetail').addEventListener('click',e=>{if(window.innerWidth<=600&&e.target===document.getElementById('pvDetail'))document.getElementById('pvWrap').classList.remove('detail-open');});
-
-// Stock
 document.getElementById('stockLeftBody').addEventListener('click',e=>{const g=e.target.closest('.bkg-group[data-no]');if(g)selBkg(g.dataset.no);});
 document.getElementById('stockRight').addEventListener('click',e=>{if(window.innerWidth<=600)document.getElementById('stockBody').classList.remove('detail-open');});
-
-// Factory date filter
 document.getElementById('fDateFrom').addEventListener('change',renderFactoryView);
 document.getElementById('fDateTo').addEventListener('change',renderFactoryView);
 document.getElementById('fDateClr').addEventListener('click',()=>{document.getElementById('fDateFrom').value='';document.getElementById('fDateTo').value='';renderFactoryView();});
@@ -1053,8 +983,6 @@ document.getElementById('fDateBar').addEventListener('click',e=>{
   else if(b.dataset.fq==='month'){document.getElementById('fDateFrom').value=monthStartIso();document.getElementById('fDateTo').value=todayIso();}
   renderFactoryView();
 });
-
-// Start
 initApp();
 </script>
 </body>
