@@ -586,7 +586,7 @@ function normInv(s2){
 }
 /* เรือที่จ่ายค่าระวางก่อนมีไฟล์ Statement — ถ้าไม่มีข้อมูลให้แสดง "จ่ายแล้ว"
    ใช้ชื่อเต็มตรงๆ (exact match, case-insensitive) — ป้องกัน false match เช่น MONICA 220V */
-const PRE_PAID_VESSELS=['MONICA 019N','OOCL ZHOUSHAN 292N'];
+const PRE_PAID_VESSELS=['MONICA 019N','OOCL ZHOUSHAN 291N'];
 function parseStatement(sheet){
   /* อ่าน Sheet STATEMENT: NO., DATE, TYPE, DESCRIPTION, ..., IN(RM), OUT(RM), BALANCE
      TYPE: OCF → ค่าระวาง, TLX → ค่า Telex
@@ -780,6 +780,7 @@ async function loadData(){
 =================================================== */
 let FLAT=[],BY_MONTH={},STOCK={bkgGroups:[],stats:{}},VESSEL=[],FEES={},STMT_INFO={latestNo:'',latestBalance:0,latestDate:''};
 let curTab='main',SM=null,SP=null,SI=null,activePV=null,activeBkg=null,factoryDateFrom=0,factoryDateTo=0;
+let mainViewMode='month',SF=null; /* SF = selected factory */
 const MF={'1':'ม.ค.','2':'ก.พ.','3':'มี.ค.','4':'เม.ย.','-':'ไม่ระบุ'};
 const PFXC={
   BSW:{bg:'#dbeafe',tx:'#1e40af',bd:'#bfdbfe'},OGM:{bg:'#dcfce7',tx:'#166534',bd:'#bbf7d0'},
@@ -943,14 +944,36 @@ function renderVesselView(){
   document.getElementById('vesselWrap').innerHTML=out;
 }
 function renderTabs(){
-  const months=Object.keys(BY_MONTH).sort((a,b)=>parseInt(a)||99-(parseInt(b)||99));
-  let out='';
-  months.forEach(m=>{
-    const cnt=BY_MONTH[m].reduce((a,d)=>a+d.total_actual,0);
-    out+='<div class="mtab'+(SM===m?' active':'')+'" data-m="'+m+'">'+MF[m]+'<br><span style="font-size:10px;opacity:.7;">'+cnt+' ตู้</span></div>';
-  });
-  document.getElementById('mTabs').innerHTML=out;
-  if(!SM&&months.length)selMonth(months[0]);
+  /* ปุ่ม toggle โหมด */
+  const toggle='<div style="padding:6px 4px 6px;display:flex;gap:3px;justify-content:center;border-bottom:1px solid rgba(255,255,255,.15);margin-bottom:4px;flex-shrink:0;">'
+    +'<button onclick="setMainViewMode(\'month\')" style="flex:1;padding:5px 2px;border-radius:5px;border:none;font-size:9px;font-weight:700;cursor:pointer;transition:all .15s;'+(mainViewMode==='month'?'background:#63b3ed;color:#1a365d;':'background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);')+'">📅<br>เดือน</button>'
+    +'<button onclick="setMainViewMode(\'factory\')" style="flex:1;padding:5px 2px;border-radius:5px;border:none;font-size:9px;font-weight:700;cursor:pointer;transition:all .15s;'+(mainViewMode==='factory'?'background:#63b3ed;color:#1a365d;':'background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);')+'">🏭<br>โรงงาน</button>'
+    +'</div>';
+  if(mainViewMode==='month'){
+    const months=Object.keys(BY_MONTH).sort((a,b)=>parseInt(a)||99-(parseInt(b)||99));
+    let out=toggle;
+    months.forEach(m=>{
+      const cnt=BY_MONTH[m].reduce((a,d)=>a+d.total_actual,0);
+      out+='<div class="mtab'+(SM===m?' active':'')+'" data-m="'+m+'">'+MF[m]+'<br><span style="font-size:10px;opacity:.7;">'+cnt+' ตู้</span></div>';
+    });
+    document.getElementById('mTabs').innerHTML=out;
+    if(!SM&&months.length)selMonth(months[0]);
+  } else {
+    /* โหมดโรงงาน — จัดกลุ่มตาม customer */
+    const factMap={};
+    FLAT.forEach(d=>{
+      const fac=d.customer||'-';
+      if(!factMap[fac])factMap[fac]={count:0,ctr:0};
+      factMap[fac].count++;factMap[fac].ctr+=d.total_actual;
+    });
+    const facts=Object.keys(factMap).sort((a,b)=>a==='-'?1:b==='-'?-1:a.localeCompare(b,'th'));
+    let out=toggle;
+    facts.forEach(fac=>{
+      out+='<div class="mtab'+(SF===fac?' active':'')+'" data-fac="'+h(fac)+'">'+h(fac)+'<br><span style="font-size:10px;opacity:.7;">'+factMap[fac].count+' INV</span></div>';
+    });
+    document.getElementById('mTabs').innerHTML=out;
+    if(!SF&&facts.length)selFactory(facts[0]);
+  }
 }
 function selMonth(m){
   SM=m;SP=null;SI=null;
@@ -974,6 +997,46 @@ function selPrefix(m,pfx){
     '<div class="bc"><span class="bc-item" data-back-m="'+m+'">'+MF[m]+'</span><span class="bc-sep">›</span><span class="bc-cur">'+h(pfx)+'</span></div>';
   const invs=(BY_MONTH[m]||[]).filter(d=>d.prefix===pfx);
   const s=pst(pfx);
+  let out='';
+  invs.forEach(d=>{
+    const ctrOk=d.total_expected>0&&d.total_actual>=d.total_expected;
+    const docOk=d.doc_status==='ปล่อยเอกสารแล้ว';
+    const badge=docOk?'<span class="ir-badge" style="background:#dcfce7;color:#166534">✔</span>':
+      (ctrOk?'<span class="ir-badge" style="background:#ede9fe;color:#7c3aed">~</span>':
+      '<span class="ir-badge" style="background:#fee2e2;color:#991b1b">'+d.total_actual+'/'+d.total_expected+'</span>');
+    out+='<div class="ir" data-id="'+d.id+'"><span class="ir-inv">'+h(d.inv)+'</span>'+badge+'</div>';
+  });
+  document.getElementById('mBody').innerHTML=out;
+  document.getElementById('dPanel').innerHTML='<div class="placeholder"><div class="icon">👈</div><p>เลือกอินวอยซ์</p></div>';
+}
+function setMainViewMode(mode){
+  mainViewMode=mode; SM=null; SP=null; SF=null; SI=null;
+  document.getElementById('mHead').innerHTML='<span class="bc-cur">'+(mode==='month'?'เลือกเดือน':'เลือกโรงงาน')+'</span>';
+  document.getElementById('mBody').innerHTML='';
+  document.getElementById('dPanel').innerHTML='<div class="placeholder"><div class="icon">📦</div><p>'+(mode==='month'?'เลือกเดือน → Prefix → อินวอยซ์':'เลือกโรงงาน → Prefix → อินวอยซ์')+'</p></div>';
+  renderTabs();
+}
+function selFactory(fac){
+  SF=fac; SP=null; SI=null;
+  document.querySelectorAll('#mTabs .mtab').forEach(el=>el.classList.toggle('active',el.dataset.fac===fac));
+  document.getElementById('mHead').innerHTML='<span class="bc-cur">🏭 '+h(fac)+'</span>';
+  const invs=FLAT.filter(d=>(d.customer||'-')===fac);
+  const pfxMap={};
+  invs.forEach(d=>{if(!pfxMap[d.prefix])pfxMap[d.prefix]={count:0,ctr:0};pfxMap[d.prefix].count++;pfxMap[d.prefix].ctr+=d.total_actual;});
+  let out='';
+  Object.keys(pfxMap).sort().forEach(pfx=>{
+    const s=pst(pfx);
+    out+='<div class="pfx-row" data-pfx="'+pfx+'"><span class="pfx-name" style="color:'+s.tx+'">'+h(pfx)+'</span> <span class="pfx-count">'+pfxMap[pfx].count+' INV · '+pfxMap[pfx].ctr+' ตู้</span></div>';
+  });
+  document.getElementById('mBody').innerHTML=out;
+  document.getElementById('dPanel').innerHTML='<div class="placeholder"><div class="icon">👈</div><p>เลือก Prefix</p></div>';
+  const mp=document.getElementById('midPanel');if(mp)mp.classList.add('open');
+}
+function selFactoryPrefix(fac,pfx){
+  SP=pfx; SI=null;
+  document.getElementById('mHead').innerHTML=
+    '<div class="bc"><span class="bc-item" data-back-fac="'+h(fac)+'">🏭 '+h(fac)+'</span><span class="bc-sep">›</span><span class="bc-cur">'+h(pfx)+'</span></div>';
+  const invs=FLAT.filter(d=>(d.customer||'-')===fac&&d.prefix===pfx);
   let out='';
   invs.forEach(d=>{
     const ctrOk=d.total_expected>0&&d.total_actual>=d.total_expected;
@@ -1287,13 +1350,22 @@ document.getElementById('sModalBody').addEventListener('click',e=>{
   document.getElementById('sModalBg').classList.remove('open');
   const id=parseInt(r.dataset.id);switchTab('pending');setTimeout(()=>selPending(id),80);
 });
-document.getElementById('mTabs').addEventListener('click',e=>{const t=e.target.closest('.mtab[data-m]');if(t)selMonth(t.dataset.m);});
+document.getElementById('mTabs').addEventListener('click',e=>{
+  const t=e.target.closest('.mtab[data-m]');if(t)selMonth(t.dataset.m);
+  const f=e.target.closest('.mtab[data-fac]');if(f)selFactory(f.dataset.fac);
+});
 document.getElementById('mBody').addEventListener('click',e=>{
-  const pfx=e.target.closest('.pfx-row[data-pfx]');if(pfx){selPrefix(SM,pfx.dataset.pfx);return;}
+  const pfx=e.target.closest('.pfx-row[data-pfx]');
+  if(pfx){
+    if(mainViewMode==='factory')selFactoryPrefix(SF,pfx.dataset.pfx);
+    else selPrefix(SM,pfx.dataset.pfx);
+    return;
+  }
   const ir=e.target.closest('.ir[data-id]');if(ir)selInv(parseInt(ir.dataset.id));
 });
 document.getElementById('mHead').addEventListener('click',e=>{
   const b=e.target.closest('.bc-item[data-back-m]');if(b)selMonth(b.dataset.backM);
+  const bf=e.target.closest('.bc-item[data-back-fac]');if(bf)selFactory(bf.dataset.backFac);
 });
 document.getElementById('dPanel').addEventListener('click',e=>{const ir=e.target.closest('.ir[data-id]');if(ir)selInv(parseInt(ir.dataset.id));});
 document.getElementById('pvList').addEventListener('click',e=>{const c=e.target.closest('.pv-card[data-id]');if(c)selPending(parseInt(c.dataset.id));});
