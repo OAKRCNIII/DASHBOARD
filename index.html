@@ -137,6 +137,23 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
 .bkg-avail{font-size:22px;font-weight:800;color:#16a34a;line-height:1;}
 .bkg-avail-lbl{font-size:10px;color:#64748b;margin-top:2px;}
 .stock-right{display:none;}
+/* VESSEL VIEW */
+.vessel-view{flex-direction:column;overflow-y:auto;background:#f0f4f8;}
+.vessel-wrap{max-width:900px;margin:0 auto;padding:14px 16px;}
+.vessel-card{background:white;border-radius:10px;box-shadow:0 1px 8px rgba(0,0,0,.08);margin-bottom:14px;overflow:hidden;}
+.vessel-head{background:linear-gradient(135deg,#1a365d,#2b6cb0);color:white;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;}
+.vessel-name{font-size:13px;font-weight:700;letter-spacing:.3px;}
+.vessel-date-badge{font-size:11px;background:rgba(255,255,255,.2);border-radius:6px;padding:2px 10px;white-space:nowrap;}
+.vessel-summary{font-size:10px;background:rgba(255,255,255,.15);border-radius:4px;padding:2px 8px;white-space:nowrap;}
+.vtbl{width:100%;border-collapse:collapse;font-size:12px;}
+.vtbl th{background:#f0f4f8;color:#1a365d;padding:7px 12px;font-size:10px;font-weight:700;text-align:left;border-bottom:2px solid #e2e8f0;text-transform:uppercase;letter-spacing:.4px;}
+.vtbl td{padding:7px 12px;border-bottom:1px solid #f1f5f9;vertical-align:middle;}
+.vtbl tbody tr:last-child td{border-bottom:none;}
+.vtbl tbody tr:hover td{background:#f0f9ff;}
+.vtbl .inv-cell{font-weight:700;color:#1a365d;}
+.vtbl .bkg-cell{font-family:'Courier New',monospace;font-weight:600;color:#475569;}
+.vtbl .vol-cell{font-weight:700;color:#16a34a;text-align:center;}
+.vtbl .des-cell{color:#64748b;font-size:11px;}
 /* FACTORY VIEW */
 .factory-view{flex-direction:column;overflow-y:auto;background:#f0f4f8;}
 .factory-wrap{max-width:820px;margin:0 auto;padding:14px 16px;}
@@ -248,6 +265,11 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
       <div class="setup-label">พาธไฟล์ BKG (.xlsx)</div>
       <input class="setup-input" id="inBkgPath" type="text" placeholder="/ชื่อโฟลเดอร์/BKG.xlsx">
     </div>
+    <div class="setup-section">
+      <div class="setup-label">พาธไฟล์ VESSEL MANAGE (.xlsm)</div>
+      <input class="setup-input" id="inVslPath" type="text" placeholder="/ชื่อโฟลเดอร์/VESSEL_MANAGE.xlsm">
+      <div class="setup-hint">พาธไฟล์ข้อมูลเรือใน Dropbox (Sheet: DATABASE_VESSEL)</div>
+    </div>
     <button class="setup-btn" id="connectBtn">🔗 เชื่อมต่อ Dropbox</button>
     <div id="setupErr" style="font-size:11px;color:#dc2626;text-align:center;margin-top:8px;display:none;"></div>
   </div>
@@ -281,6 +303,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
     <button class="htab" id="htab-pending" onclick="switchTab('pending')">⏳ คงค้าง <span class="htab-badge" id="pBadge"></span></button>
     <button class="htab" id="htab-stock" onclick="switchTab('stock')">📦 STOCK ตู้</button>
     <button class="htab" id="htab-factory" onclick="switchTab('factory')">🏭 เข้าโรงงาน</button>
+    <button class="htab" id="htab-vessel" onclick="switchTab('vessel')">🚢 เรือ</button>
   </div>
   <div class="stats-bar" id="sBar"></div>
   <!-- Stat modal -->
@@ -333,6 +356,12 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
         </div>
       </div>
     </div>
+    <!-- VESSEL VIEW -->
+    <div class="view vessel-view" id="vesselView">
+      <div class="vessel-wrap" id="vesselWrap">
+        <div class="placeholder"><div class="icon">🚢</div><p>กำลังโหลดข้อมูลเรือ...</p></div>
+      </div>
+    </div>
     <div class="view factory-view" id="factoryView">
       <div class="factory-wrap">
         <div class="factory-topbar">
@@ -359,6 +388,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
     <div class="mob-tab" id="mtab-pending" onclick="switchTab('pending')"><div class="mob-tab-icon">⏳<span class="mob-badge" id="mBadge" style="display:none;"></span></div>คงค้าง</div>
     <div class="mob-tab" id="mtab-stock" onclick="switchTab('stock')"><div class="mob-tab-icon">📦</div>STOCK</div>
     <div class="mob-tab" id="mtab-factory" onclick="switchTab('factory')"><div class="mob-tab-icon">🏭</div>โรงงาน</div>
+    <div class="mob-tab" id="mtab-vessel" onclick="switchTab('vessel')"><div class="mob-tab-icon">🚢</div>เรือ</div>
   </div>
 </div>
 <script>
@@ -542,6 +572,35 @@ function parseDatabase(sheet){
   }
   return map;
 }
+function parseVesselDb(sheet){
+  /* อ่าน Sheet DATABASE_VESSEL: NO., INV NUM, DES., BKG NO., VOL, VESSEL, DATE */
+  if(!sheet)return[];
+  const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false,cellDates:true});
+  const hi=findHdrRow(rows,['INV NUM','VESSEL']);
+  const hdr=rows[hi].map(c=>String(c||'').trim().toUpperCase());
+  const iInv=hdr.findIndex(h2=>h2.includes('INV NUM')||h2==='INV NUM');
+  const iDes=hdr.findIndex(h2=>h2==='DES.'||h2==='DES'||h2.includes('DES'));
+  const iBkg=hdr.findIndex(h2=>h2.includes('BKG'));
+  const iVol=hdr.findIndex(h2=>h2==='VOL');
+  const iVsl=hdr.findIndex(h2=>h2==='VESSEL');
+  const iDate=hdr.findIndex(h2=>h2==='DATE');
+  const out=[];
+  for(let i=hi+1;i<rows.length;i++){
+    const r=rows[i];
+    const inv=String(r[iInv]||'').trim();
+    const vessel=String(r[iVsl]||'').trim();
+    if(!inv||!vessel)continue;
+    out.push({
+      inv,
+      des:String(r[iDes]||'').trim()||'-',
+      bkg:String(r[iBkg]||'').trim()||'-',
+      vol:parseInt(r[iVol])||0,
+      vessel,
+      date:fmtExcelDate(r[iDate])
+    });
+  }
+  return out;
+}
 function parseBkgSheet(wb,sheetName,status){
   const sheet=wb.Sheets[sheetName];
   if(!sheet)return[];
@@ -612,23 +671,33 @@ function buildFlat(allInv,dbMap){
 async function loadData(){
   const invPath=ls('dbx_inv_path');
   const bkgPath=ls('dbx_bkg_path');
+  const vslPath=ls('dbx_vsl_path');
   if(!invPath||!bkgPath)throw new Error('ไม่พบพาธไฟล์ กรุณาตั้งค่าใหม่');
-  const [invBuf,bkgBuf]=await Promise.all([dbxDownload(invPath),dbxDownload(bkgPath)]);
+  /* ดาวน์โหลด 2 ไฟล์หลักพร้อมกัน + ไฟล์เรือ (ถ้ามี) */
+  const downloads=[dbxDownload(invPath),dbxDownload(bkgPath)];
+  if(vslPath)downloads.push(dbxDownload(vslPath));
+  const bufs=await Promise.all(downloads);
   setLoad('กำลังประมวลผลข้อมูล...');
-  const invWb=XLSX.read(invBuf,{type:'array',cellDates:true});
+  const invWb=XLSX.read(bufs[0],{type:'array',cellDates:true});
   const invSheet=invWb.SheetNames.find(n=>n.includes('ALL_INV')||n.includes('INV'))||invWb.SheetNames[0];
   const dbSheet=invWb.SheetNames.find(n=>n.toUpperCase().includes('DATABASE'))||invWb.SheetNames[1];
   const allInv=parseAllInv(invWb.Sheets[invSheet]);
   const dbMap=parseDatabase(invWb.Sheets[dbSheet]);
   const {byMonth,flat}=buildFlat(allInv,dbMap);
-  const bkgWb=XLSX.read(bkgBuf,{type:'array'});
+  const bkgWb=XLSX.read(bufs[1],{type:'array'});
   const stockData=parseBkg(bkgWb);
-  return{byMonth,flat,stock:stockData};
+  let vesselData=[];
+  if(vslPath&&bufs[2]){
+    const vslWb=XLSX.read(bufs[2],{type:'array',cellDates:true});
+    const vslSheet=vslWb.Sheets['DATABASE_VESSEL']||vslWb.Sheets[vslWb.SheetNames.find(n=>n.toUpperCase().includes('DATABASE_VESSEL'))]||null;
+    if(vslSheet)vesselData=parseVesselDb(vslSheet);
+  }
+  return{byMonth,flat,stock:stockData,vessel:vesselData};
 }
 /* ===================================================
    DASHBOARD STATE & RENDER
 =================================================== */
-let FLAT=[],BY_MONTH={},STOCK={bkgGroups:[],stats:{}};
+let FLAT=[],BY_MONTH={},STOCK={bkgGroups:[],stats:{}},VESSEL=[];
 let curTab='main',SM=null,SP=null,SI=null,activePV=null,activeBkg=null,factoryDateFrom=0,factoryDateTo=0;
 const MF={'1':'ม.ค.','2':'ก.พ.','3':'มี.ค.','4':'เม.ย.','-':'ไม่ระบุ'};
 const PFXC={
@@ -639,7 +708,7 @@ const PFXC={
 function pst(pfx){return PFXC[pfx]||PFXC.DEF;}
 function switchTab(tab){
   curTab=tab;
-  ['main','pending','stock','factory'].forEach(t=>{
+  ['main','pending','stock','factory','vessel'].forEach(t=>{
     document.getElementById(t+'View').classList.toggle('active',t===tab);
     const ht=document.getElementById('htab-'+t);if(ht)ht.classList.toggle('active',t===tab);
     const mt=document.getElementById('mtab-'+t);if(mt)mt.classList.toggle('active',t===tab);
@@ -648,6 +717,7 @@ function switchTab(tab){
   if(tab==='stock'){renderStockLeft();renderStatsStock();}
   if(tab==='main'){renderTabs();renderStatsMain();}
   if(tab==='factory'){renderFactoryView();renderStatsMain();}
+  if(tab==='vessel'){renderVesselView();renderStatsVessel();}
 }
 function kc(l,v,s,c,filter){
   const cls='sc'+(filter?' sc-click':'');
@@ -655,14 +725,14 @@ function kc(l,v,s,c,filter){
   return '<div class="'+cls+'"'+attr+'><div class="lbl">'+l+'</div><div class="val" style="color:'+c+'">'+v+'</div><div class="sub2">'+s+(filter?' · คลิกดูรายการ':'')+'</div></div>';
 }
 function renderStatsMain(){
-  let ti=0,rel=0;
-  FLAT.forEach(d=>{ti++;if(d.doc_status==='ปล่อยเอกสารแล้ว')rel++;});
+  let ti=0,rel=0,relCtr=0;
+  FLAT.forEach(d=>{ti++;if(d.doc_status==='ปล่อยเอกสารแล้ว'){rel++;relCtr+=d.total_expected||0;}});
   const pendingCnt=FLAT.filter(d=>d.doc_status!=='ปล่อยเอกสารแล้ว'&&d.total_expected>0&&d.total_actual<d.total_expected&&d.month!=='1').length;
   const ctrDoneNoDoc=FLAT.filter(d=>d.doc_status!=='ปล่อยเอกสารแล้ว'&&(d.total_expected===0||d.total_actual>=d.total_expected)).length;
   const totalNotRel=pendingCnt+ctrDoneNoDoc;
   document.getElementById('sBar').innerHTML=
     kc('อินวอยซ์ทั้งหมด',ti,'รายการ','#2b6cb0',null)+
-    kc('ปล่อยเอกสารแล้ว',rel,'อินวอยซ์','#16a34a',null)+
+    kc('ปล่อยเอกสารแล้ว',rel,relCtr+' ตู้','#16a34a',null)+
     kc('คงค้าง',pendingCnt,'ตู้ยังไม่ครบ','#d97706','pending')+
     kc('ตู้ครบ รอปล่อยเอกสาร',ctrDoneNoDoc,'อินวอยซ์','#7c3aed','ctr-done');
   const pb=document.getElementById('pBadge');if(pb)pb.textContent=totalNotRel||'';
@@ -674,6 +744,54 @@ function renderStatsStock(){
     kc('ตู้คงเหลือรวม',s.available||0,'จาก '+(s.total||0)+' ตู้','#16a34a',null)+
     kc('ลานตู้ MMF',s.mmfAvail||0,'ตู้ว่าง','#1e3a8a',null)+
     kc('ลานตู้ PIP',s.pipAvail||0,'ตู้ว่าง','#14532d',null);
+}
+function renderStatsVessel(){
+  /* จัดกลุ่มตามชื่อเรือ นับอินวอยซ์ + ตู้ */
+  const vesselNames=[...new Set(VESSEL.map(r=>r.vessel))];
+  const totalVol=VESSEL.reduce((a,r)=>a+r.vol,0);
+  document.getElementById('sBar').innerHTML=
+    kc('เรือทั้งหมด',vesselNames.length,'รอบการส่ง','#2b6cb0',null)+
+    kc('อินวอยซ์ทั้งหมด',VESSEL.length,'ที่จัดขึ้นเรือแล้ว','#16a34a',null)+
+    kc('ตู้รวมทั้งหมด',totalVol,'ตู้','#7c3aed',null);
+}
+function renderVesselView(){
+  if(!VESSEL.length){
+    document.getElementById('vesselWrap').innerHTML='<div class="placeholder"><div class="icon">🚢</div><p>ยังไม่มีข้อมูลเรือ — กรุณาใส่พาธไฟล์ VESSEL_MANAGE.xlsm ในหน้าตั้งค่า</p></div>';
+    return;
+  }
+  /* จัดกลุ่มตาม vessel + date */
+  const groups={};
+  VESSEL.forEach(r=>{
+    const key=r.vessel+'|||'+r.date;
+    if(!groups[key])groups[key]={vessel:r.vessel,date:r.date,rows:[],totalVol:0};
+    groups[key].rows.push(r);
+    groups[key].totalVol+=r.vol;
+  });
+  /* เรียงตามวันที่ (เก่า→ใหม่) */
+  const sorted=Object.values(groups).sort((a,b)=>{
+    const da=parsePickupDate(a.date),db2=parsePickupDate(b.date);
+    return da-db2;
+  });
+  let out='';
+  sorted.forEach(g=>{
+    out+='<div class="vessel-card">';
+    out+='<div class="vessel-head"><span class="vessel-name">🚢 '+h(g.vessel)+'</span>';
+    out+='<div style="display:flex;gap:6px;align-items:center;">';
+    out+='<span class="vessel-date-badge">📅 '+h(g.date)+'</span>';
+    out+='<span class="vessel-summary">'+g.rows.length+' INV · '+g.totalVol+' ตู้</span>';
+    out+='</div></div>';
+    out+='<table class="vtbl"><thead><tr><th>#</th><th>อินวอยซ์</th><th>ปลายทาง</th><th>BKG NO.</th><th style="text-align:center;">ตู้</th></tr></thead><tbody>';
+    g.rows.forEach((r,idx)=>{
+      const pfx=r.inv.substring(0,3);const s=pst(pfx);
+      out+='<tr><td style="color:#94a3b8;font-size:11px;">'+(idx+1)+'</td>';
+      out+='<td class="inv-cell"><span class="finv-badge" style="background:'+s.bg+';color:'+s.tx+';border:1px solid '+s.bd+'">'+h(pfx)+'</span>'+h(r.inv)+'</td>';
+      out+='<td class="des-cell">'+h(r.des)+'</td>';
+      out+='<td class="bkg-cell">'+h(r.bkg)+'</td>';
+      out+='<td class="vol-cell">'+r.vol+'</td></tr>';
+    });
+    out+='</tbody></table></div>';
+  });
+  document.getElementById('vesselWrap').innerHTML=out;
 }
 function renderTabs(){
   const months=Object.keys(BY_MONTH).sort((a,b)=>parseInt(a)||99-(parseInt(b)||99));
@@ -916,12 +1034,12 @@ function showSetup(errMsg){
   document.getElementById('setupScreen').style.display='flex';
   if(errMsg){document.getElementById('setupErr').textContent=errMsg;document.getElementById('setupErr').style.display='block';}
   document.getElementById('thisUrl').textContent=window.location.origin+window.location.pathname;
-  const saved=['dbx_app_key','dbx_inv_path','dbx_bkg_path'];
-  const ids=['inAppKey','inInvPath','inBkgPath'];
+  const saved=['dbx_app_key','dbx_inv_path','dbx_bkg_path','dbx_vsl_path'];
+  const ids=['inAppKey','inInvPath','inBkgPath','inVslPath'];
   saved.forEach((k,i)=>{const v=ls(k);if(v)document.getElementById(ids[i]).value=v;});
 }
 function showDashboard(data){
-  FLAT=data.flat;BY_MONTH=data.byMonth;STOCK=data.stock;
+  FLAT=data.flat;BY_MONTH=data.byMonth;STOCK=data.stock;VESSEL=data.vessel||[];
   hide('loadScreen');
   document.getElementById('app').style.display='flex';
   const now=new Date();
@@ -964,7 +1082,9 @@ document.getElementById('connectBtn').addEventListener('click',async()=>{
   const bkgPath=document.getElementById('inBkgPath').value.trim();
   if(!appKey){document.getElementById('setupErr').textContent='กรุณาใส่ App Key';document.getElementById('setupErr').style.display='block';return;}
   if(!invPath||!bkgPath){document.getElementById('setupErr').textContent='กรุณาใส่พาธไฟล์ทั้ง 2 ไฟล์';document.getElementById('setupErr').style.display='block';return;}
+  const vslPath=document.getElementById('inVslPath').value.trim();
   ls('dbx_app_key',appKey);ls('dbx_inv_path',invPath);ls('dbx_bkg_path',bkgPath);
+  if(vslPath)ls('dbx_vsl_path',vslPath);
   await startAuth();
 });
 document.getElementById('refreshBtn').addEventListener('click',async()=>{
