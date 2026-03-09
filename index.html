@@ -577,13 +577,21 @@ function parseDatabase(sheet){
   }
   return map;
 }
+/* normInv ใช้ร่วมกันทั้งไฟล์ — ลบ space, () suffix, uppercase */
+function normInv(s2){
+  return String(s2||'')
+    .replace(/\([^)]*\)/g,'')   /* ลบ (TWI63), (B), (A) ออก */
+    .replace(/\s+/g,'')          /* ลบช่องว่าง */
+    .replace(/[\u200B-\u200D\uFEFF]/g,'') /* ลบ zero-width chars */
+    .toUpperCase();
+}
 function parseStatement(sheet){
   /* อ่าน Sheet STATEMENT: NO., DATE, TYPE, DESCRIPTION, ..., IN(RM), OUT(RM), BALANCE
      TYPE: OCF → ค่าระวาง, TLX → ค่า Telex
-     DESCRIPTION ของ TLX จะขึ้นต้นด้วย "TLX-"
-     คืน map { normInv: { ocf, ocfNo, ocfDate, tlx, tlxNo, tlxDate } }
+     คืน { map: { normInv: { ocf, ocfNo, ocfDate, tlx, tlxNo, tlxDate } },
+            latestNo, latestBalance, latestDate }
   */
-  if(!sheet)return{};
+  if(!sheet)return{map:{},latestNo:'',latestBalance:0,latestDate:''};
   const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false,cellDates:true});
   const hi=findHdrRow(rows,['TYPE','DESCRIPTION','OUT']);
   const hdr=rows[hi].map(c=>String(c||'').trim().toUpperCase());
@@ -591,16 +599,27 @@ function parseStatement(sheet){
   const iDate=hdr.findIndex(h2=>h2==='DATE');
   const iType=hdr.findIndex(h2=>h2==='TYPE');
   const iDesc=hdr.findIndex(h2=>h2.includes('DESCRIPTION'));
-  const iOut=hdr.findIndex(h2=>h2.includes('OUT'));
-  function normInv(s2){return s2.replace(/\s+/g,'').toUpperCase();}
+  const iOut=hdr.findIndex(h2=>h2.startsWith('OUT'));
+  const iBal=hdr.findIndex(h2=>h2==='BALANCE');
   const map={};
+  let latestNo='',latestBalance=0,latestDate='',latestNoNum=0;
   for(let i=hi+1;i<rows.length;i++){
     const r=rows[i];
     const type=String(r[iType]||'').trim().toUpperCase();
     const desc=String(r[iDesc]||'').trim();
     const out=parseFloat(r[iOut])||0;
     const no=String(r[iNo]||'').trim();
+    const noNum=parseFloat(no)||0;
     const dt=fmtExcelDate(r[iDate]);
+    const bal=parseFloat(r[iBal])||0;
+    /* ติดตาม ลำดับล่าสุด + ยอดคงเหลือ (เอา row สุดท้ายที่มี NO. จริง) */
+    if(noNum>0){
+      if(noNum>=latestNoNum){
+        latestNoNum=noNum;latestNo=no;
+        if(bal>0)latestBalance=bal;
+        if(dt&&dt!=='-')latestDate=dt;
+      }
+    }
     if(type==='OCF'&&desc&&desc!=='BALANCE'){
       const key=normInv(desc);
       if(!map[key])map[key]={ocf:0,ocfNo:'',ocfDate:'',tlx:0,tlxNo:'',tlxDate:''};
@@ -616,7 +635,7 @@ function parseStatement(sheet){
       map[key].tlxDate=dt;
     }
   }
-  return map;
+  return{map,latestNo,latestBalance,latestDate};
 }
 function parseVesselDb(sheet){
   /* อ่าน Sheet DATABASE_VESSEL: NO., INV NUM, DES., BKG NO., VOL, VESSEL, DATE */
@@ -735,7 +754,7 @@ async function loadData(){
   const {byMonth,flat}=buildFlat(allInv,dbMap);
   const bkgWb=XLSX.read(bufs[1],{type:'array'});
   const stockData=parseBkg(bkgWb);
-  let vesselData=[];let feesData={};
+  let vesselData=[];let feesData={};let stmtInfo={latestNo:'',latestBalance:0,latestDate:''};
   let bi=2;
   if(hasvsl&&bufs[bi]){
     const vslWb=XLSX.read(bufs[bi],{type:'array',cellDates:true});
@@ -746,14 +765,18 @@ async function loadData(){
   if(hasstm&&bufs[bi]){
     const stmWb=XLSX.read(bufs[bi],{type:'array',cellDates:true});
     const stmSheet=stmWb.Sheets['STATEMENT']||stmWb.Sheets[stmWb.SheetNames.find(n=>n.toUpperCase().includes('STATEMENT'))]||null;
-    if(stmSheet)feesData=parseStatement(stmSheet);
+    if(stmSheet){
+      const parsed=parseStatement(stmSheet);
+      feesData=parsed.map;
+      stmtInfo={latestNo:parsed.latestNo,latestBalance:parsed.latestBalance,latestDate:parsed.latestDate};
+    }
   }
-  return{byMonth,flat,stock:stockData,vessel:vesselData,fees:feesData};
+  return{byMonth,flat,stock:stockData,vessel:vesselData,fees:feesData,stmtInfo};
 }
 /* ===================================================
    DASHBOARD STATE & RENDER
 =================================================== */
-let FLAT=[],BY_MONTH={},STOCK={bkgGroups:[],stats:{}},VESSEL=[],FEES={};
+let FLAT=[],BY_MONTH={},STOCK={bkgGroups:[],stats:{}},VESSEL=[],FEES={},STMT_INFO={latestNo:'',latestBalance:0,latestDate:''};
 let curTab='main',SM=null,SP=null,SI=null,activePV=null,activeBkg=null,factoryDateFrom=0,factoryDateTo=0;
 const MF={'1':'ม.ค.','2':'ก.พ.','3':'มี.ค.','4':'เม.ย.','-':'ไม่ระบุ'};
 const PFXC={
@@ -804,9 +827,8 @@ function renderStatsStock(){
 function renderStatsVessel(){
   const vesselNames=[...new Set(VESSEL.map(r=>r.vessel))];
   const totalVol=VESSEL.reduce((a,r)=>a+r.vol,0);
-  function normI2(s2){return s2.replace(/\s+/g,'').toUpperCase();}
   let totalOcf=0,totalTlx=0;
-  VESSEL.forEach(r=>{const f=FEES[normI2(r.inv)];if(f){totalOcf+=f.ocf||0;totalTlx+=f.tlx||0;}});
+  VESSEL.forEach(r=>{const f=FEES[normInv(r.inv)];if(f){totalOcf+=f.ocf||0;totalTlx+=f.tlx||0;}});
   const totalFees=totalOcf+totalTlx;
   const fmtRM=n=>n>0?n.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2}):'-';
   let bar=kc('เรือทั้งหมด',vesselNames.length,'รอบการส่ง','#2b6cb0',null)+
@@ -816,6 +838,10 @@ function renderStatsVessel(){
     bar+=kc('ค่าระวาง OCF',fmtRM(totalOcf)+' RM','ทั้งหมด','#16a34a',null)+
          kc('ค่า TLX',fmtRM(totalTlx)+' RM','ทั้งหมด','#2563eb',null)+
          kc('รวมทั้งสิ้น',fmtRM(totalFees)+' RM','OCF+TLX','#dc2626',null);
+  }
+  if(STMT_INFO.latestNo){
+    bar+=kc('ลำดับล่าสุด','#'+STMT_INFO.latestNo,STMT_INFO.latestDate,'#475569',null)+
+         kc('ยอดคงเหลือ',fmtRM(STMT_INFO.latestBalance)+' RM','ณ ลำดับ #'+STMT_INFO.latestNo,'#dc2626',null);
   }
   document.getElementById('sBar').innerHTML=bar;
 }
@@ -839,12 +865,11 @@ function renderVesselView(){
   });
   const hasFees=Object.keys(FEES).length>0;
   function fmtRM(n){return n>0?n.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2}):'-';}
-  function normI(s2){return s2.replace(/\s+/g,'').toUpperCase();}
   let out='';
   sorted.forEach(g=>{
     /* คำนวณ fees ของเรือลำนี้ */
     let sumOcf=0,sumTlx=0;
-    g.rows.forEach(r=>{const f=FEES[normI(r.inv)];if(f){sumOcf+=f.ocf||0;sumTlx+=f.tlx||0;}});
+    g.rows.forEach(r=>{const f=FEES[normInv(r.inv)];if(f){sumOcf+=f.ocf||0;sumTlx+=f.tlx||0;}});
     const sumTotal=sumOcf+sumTlx;
     out+='<div class="vessel-card">';
     out+='<div class="vessel-head"><span class="vessel-name">🚢 '+h(g.vessel)+'</span>';
@@ -864,7 +889,7 @@ function renderVesselView(){
       out+='<td class="bkg-cell">'+h(r.bkg)+'</td>';
       out+='<td class="vol-cell">'+r.vol+'</td>';
       if(hasFees){
-        const f=FEES[normI(r.inv)]||{};
+        const f=FEES[normInv(r.inv)]||{};
         const ocfAmt=f.ocf||0;const tlxAmt=f.tlx||0;
         const ocfTxt=ocfAmt>0
           ?'<span style="color:#16a34a;font-weight:700;">'+fmtRM(ocfAmt)+'</span>'+(f.ocfNo?'<br><span style="font-size:9px;color:#94a3b8;">#'+h(f.ocfNo)+'</span>':'')
@@ -956,7 +981,6 @@ function showInvDetail(id,panelId){
   out+='</div>';
   /* แสดงข้อมูลเรือ */
   if(VESSEL&&VESSEL.length){
-    function normInv(s2){return s2.replace(/\s+/g,'').toUpperCase();}
     const vr=VESSEL.find(r=>normInv(r.inv)===normInv(d.inv));
     if(vr){
       out+='<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">';
@@ -1152,7 +1176,7 @@ function showSetup(errMsg){
   saved.forEach((k,i)=>{const v=ls(k);if(v)document.getElementById(ids[i]).value=v;});
 }
 function showDashboard(data){
-  FLAT=data.flat;BY_MONTH=data.byMonth;STOCK=data.stock;VESSEL=data.vessel||[];FEES=data.fees||{};
+  FLAT=data.flat;BY_MONTH=data.byMonth;STOCK=data.stock;VESSEL=data.vessel||[];FEES=data.fees||{};STMT_INFO=data.stmtInfo||{latestNo:'',latestBalance:0,latestDate:''};
   hide('loadScreen');
   document.getElementById('app').style.display='flex';
   const now=new Date();
