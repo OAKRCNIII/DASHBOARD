@@ -781,6 +781,7 @@ async function loadData(){
 let FLAT=[],BY_MONTH={},STOCK={bkgGroups:[],stats:{}},VESSEL=[],FEES={},STMT_INFO={latestNo:'',latestBalance:0,latestDate:''};
 let curTab='main',SM=null,SP=null,SI=null,activePV=null,activeBkg=null,factoryDateFrom=0,factoryDateTo=0;
 let mainViewMode='month',SF=null; /* SF = selected factory */
+let midGroupMode='group'; /* 'group' = จัดกลุ่ม prefix | 'list' = ลิสต์ยาว */
 const MF={'1':'ม.ค.','2':'ก.พ.','3':'มี.ค.','4':'เม.ย.','-':'ไม่ระบุ'};
 const PFXC={
   BSW:{bg:'#dbeafe',tx:'#1e40af',bd:'#bfdbfe'},OGM:{bg:'#dcfce7',tx:'#166534',bd:'#bbf7d0'},
@@ -839,7 +840,7 @@ function renderStatsMain(){
     kc('ปล่อยเอกสารแล้ว',rel,relCtr+' ตู้','#16a34a',null)+
     kc('คงค้าง',pendingCnt,'ตู้ยังไม่ครบ','#d97706','pending')+
     kc('ตู้ครบ รอปล่อยเอกสาร',ctrDoneNoDoc,'อินวอยซ์','#7c3aed','ctr-done')+
-    kc('ยังไม่จัดลงเรือ',notLoadedCnt,'รายการ','#dc2626',null);
+    kc('ยังไม่จัดลงเรือ',notLoadedCnt,'รายการ · คลิกดูรายการ','#dc2626','not-loaded');
   const pb=document.getElementById('pBadge');if(pb)pb.textContent=totalNotRel||'';
   const mb=document.getElementById('mBadge');if(mb){mb.textContent=totalNotRel||'';mb.style.display=totalNotRel?'inline':'none';}
 }
@@ -1000,20 +1001,42 @@ function renderTabs(){
     if(!SF&&pfxs.length)selFactory(pfxs[0]);
   }
 }
+function midToggleHtml(){
+  const btn=(mode,label)=>'<button onclick="setMidGroupMode(\''+mode+'\')" style="padding:2px 7px;border-radius:4px;border:none;font-size:9px;font-weight:700;cursor:pointer;'+(midGroupMode===mode?'background:#1e40af;color:#fff;':'background:#e2e8f0;color:#475569;')+'">'+label+'</button>';
+  return '<div style="margin-left:auto;display:flex;gap:2px;flex-shrink:0;">'+btn('group','🏭 กลุ่ม')+btn('list','📋 ลิสต์')+'</div>';
+}
+function setMidGroupMode(mode){midGroupMode=mode;if(SM)selMonth(SM);}
 function selMonth(m){
   SM=m;SP=null;SI=null;
   document.querySelectorAll('#mTabs .mtab').forEach(el=>el.classList.toggle('active',el.dataset.m===m));
-  document.getElementById('mHead').innerHTML='<span class="bc-cur">'+MF[m]+'</span>';
+  document.getElementById('mHead').innerHTML='<div style="display:flex;align-items:center;width:100%;gap:4px;"><span class="bc-cur">'+MF[m]+'</span>'+midToggleHtml()+'</div>';
   const invs=BY_MONTH[m]||[];
-  const pfxMap={};
-  invs.forEach(d=>{if(!pfxMap[d.prefix])pfxMap[d.prefix]={count:0,ctr:0};pfxMap[d.prefix].count++;pfxMap[d.prefix].ctr+=d.total_actual;});
   let out='';
-  Object.keys(pfxMap).sort().forEach(pfx=>{
-    const s=pst(pfx);
-    out+='<div class="pfx-row" data-pfx="'+pfx+'"><span class="pfx-name" style="color:'+s.tx+'">'+h(pfx)+'</span> <span class="pfx-count">'+pfxMap[pfx].count+' INV · '+pfxMap[pfx].ctr+' ตู้</span></div>';
-  });
-  document.getElementById('mBody').innerHTML=out;
-  document.getElementById('dPanel').innerHTML='<div class="placeholder"><div class="icon">👈</div><p>เลือก Prefix</p></div>';
+  if(midGroupMode==='group'){
+    const pfxMap={};
+    invs.forEach(d=>{if(!pfxMap[d.prefix])pfxMap[d.prefix]={count:0,ctr:0};pfxMap[d.prefix].count++;pfxMap[d.prefix].ctr+=d.total_actual;});
+    Object.keys(pfxMap).sort().forEach(pfx=>{
+      const s=pst(pfx);
+      out+='<div class="pfx-row" data-pfx="'+pfx+'"><span class="pfx-name" style="color:'+s.tx+'">'+h(pfx)+'</span> <span class="pfx-count">'+pfxMap[pfx].count+' INV · '+pfxMap[pfx].ctr+' ตู้</span></div>';
+    });
+  }else{
+    /* ลิสต์ยาว — แสดงทุกอินวอยซ์โดยตรง */
+    invs.slice().sort((a,b)=>a.inv.localeCompare(b.inv)).forEach(d=>{
+      const ctrOk=d.total_expected>0&&d.total_actual>=d.total_expected;
+      const docOk=d.doc_status==='ปล่อยเอกสารแล้ว';
+      const badge=docOk?'<span class="ir-badge" style="background:#dcfce7;color:#166534">✔</span>':
+        (ctrOk?'<span class="ir-badge" style="background:#ede9fe;color:#7c3aed">~</span>':
+        '<span class="ir-badge" style="background:#fee2e2;color:#991b1b">'+d.total_actual+'/'+d.total_expected+'</span>');
+      const vslBadge=isVesselLoaded(d.inv)
+        ?'<span class="ir-badge" style="background:#e0f2fe;color:#0369a1;font-size:10px;">🚢</span>'
+        :'<span class="ir-badge" style="background:#fef9c3;color:#92400e;font-size:10px;">⚓</span>';
+      const s=pst(d.prefix);
+      const pfxBadge='<span style="display:inline-block;background:'+s.bg+';color:'+s.tx+';border-radius:3px;padding:0 5px;font-size:9px;font-weight:800;margin-right:3px;">'+h(d.prefix)+'</span>';
+      out+='<div class="ir" data-id="'+d.id+'">'+pfxBadge+'<span class="ir-inv">'+h(d.inv)+'</span>'+badge+vslBadge+'</div>';
+    });
+  }
+  document.getElementById('mBody').innerHTML=out||'<div style="padding:12px;color:#94a3b8;font-size:12px;">ไม่มีข้อมูล</div>';
+  document.getElementById('dPanel').innerHTML='<div class="placeholder"><div class="icon">👈</div><p>'+(midGroupMode==='group'?'เลือก Prefix':'เลือกอินวอยซ์')+'</p></div>';
   const mp=document.getElementById('midPanel');if(mp)mp.classList.add('open');
 }
 function selPrefix(m,pfx){
@@ -1243,19 +1266,37 @@ function showStatModal(filter){
   if(filter==='pending'){
     list=FLAT.filter(d=>d.doc_status!=='ปล่อยเอกสารแล้ว'&&d.total_expected>0&&d.total_actual<d.total_expected&&d.month!=='1');
     title='⏳ คงค้าง — ตู้ยังไม่ครบ';color='#d97706';
+  }else if(filter==='not-loaded'){
+    list=FLAT.filter(d=>!isVesselLoaded(d.inv)).sort((a,b)=>a.month===b.month?a.inv.localeCompare(b.inv):(parseInt(a.month)||99)-(parseInt(b.month)||99));
+    title='⚓ ยังไม่จัดลงเรือ';color='#dc2626';
   }else{
     list=FLAT.filter(d=>d.doc_status!=='ปล่อยเอกสารแล้ว'&&(d.total_expected===0||d.total_actual>=d.total_expected));
     title='🟣 ตู้ครบแล้ว — รอปล่อยเอกสาร';color='#7c3aed';
   }
   let rows='';
-  list.forEach(d=>{
-    const s=pst(d.prefix);
-    let ctr,cls;
-    if(d.total_expected===0){ctr='ไม่ระบุ';cls='';}
-    else if(d.total_actual>=d.total_expected){ctr='✔ '+d.total_actual+'/'+d.total_expected;cls='done';}
-    else{ctr=d.total_actual+'/'+d.total_expected;cls='incomplete';}
-    rows+='<div class="sm-row" data-id="'+d.id+'"><span class="sm-pfx" style="background:'+s.bg+';color:'+s.tx+';border:1px solid '+s.bd+'">'+h(d.prefix)+'</span><span class="sm-inv">'+h(d.inv)+'</span><span class="sm-ctr '+cls+'">'+ctr+'</span></div>';
-  });
+  if(filter==='not-loaded'){
+    /* จัดกลุ่มตามเดือน */
+    const byM={};
+    list.forEach(d=>{if(!byM[d.month])byM[d.month]=[];byM[d.month].push(d);});
+    ['1','2','3','4','-'].forEach(m=>{
+      if(!byM[m])return;
+      rows+='<div style="padding:5px 14px;background:#fef2f2;font-size:9px;font-weight:700;color:#991b1b;border-bottom:1px solid #fecaca;border-top:1px solid #fecaca;margin-top:4px;">'+MF[m]+' ('+byM[m].length+' รายการ)</div>';
+      byM[m].forEach(d=>{
+        const s=pst(d.prefix);
+        const ctrTxt=d.total_expected>0?d.total_actual+'/'+d.total_expected+' ตู้':'ไม่ระบุ';
+        rows+='<div class="sm-row" data-id="'+d.id+'"><span class="sm-pfx" style="background:'+s.bg+';color:'+s.tx+';border:1px solid '+s.bd+'">'+h(d.prefix)+'</span><span class="sm-inv">'+h(d.inv)+'</span><span class="sm-ctr">'+ctrTxt+'</span></div>';
+      });
+    });
+  }else{
+    list.forEach(d=>{
+      const s=pst(d.prefix);
+      let ctr,cls;
+      if(d.total_expected===0){ctr='ไม่ระบุ';cls='';}
+      else if(d.total_actual>=d.total_expected){ctr='✔ '+d.total_actual+'/'+d.total_expected;cls='done';}
+      else{ctr=d.total_actual+'/'+d.total_expected;cls='incomplete';}
+      rows+='<div class="sm-row" data-id="'+d.id+'"><span class="sm-pfx" style="background:'+s.bg+';color:'+s.tx+';border:1px solid '+s.bd+'">'+h(d.prefix)+'</span><span class="sm-inv">'+h(d.inv)+'</span><span class="sm-ctr '+cls+'">'+ctr+'</span></div>';
+    });
+  }
   document.getElementById('sModalTitle').textContent=title;
   document.getElementById('sModalTitle').style.color=color;
   document.getElementById('sModalBody').innerHTML=rows||'<div style="padding:20px;text-align:center;color:#64748b;">ไม่มีข้อมูล</div>';
