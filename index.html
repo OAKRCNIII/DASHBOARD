@@ -853,6 +853,18 @@ function showInvDetail(id,panelId){
   else out+='<span class="pv-badge" style="background:#fee2e2;color:#991b1b">⏳ รอเอกสาร</span>';
   out+='<span class="pv-badge" style="background:#f1f5f9;color:#475569">'+d.total_actual+'/'+d.total_expected+' ตู้</span>';
   out+='</div>';
+  /* แสดงข้อมูลเรือ */
+  if(VESSEL&&VESSEL.length){
+    function normInv(s2){return s2.replace(/\s+/g,'').toUpperCase();}
+    const vr=VESSEL.find(r=>normInv(r.inv)===normInv(d.inv));
+    if(vr){
+      out+='<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">';
+      out+='<span style="font-size:20px;flex-shrink:0;">🚢</span>';
+      out+='<div><div style="font-size:12px;font-weight:700;color:#1e40af;">'+h(vr.vessel)+'</div>';
+      out+='<div style="font-size:10px;color:#64748b;margin-top:2px;">ETD: <b>'+h(vr.date)+'</b>&nbsp;&nbsp;·&nbsp;&nbsp;BKG: <b>'+h(vr.bkg)+'</b>&nbsp;&nbsp;·&nbsp;&nbsp;ปลายทาง: <b>'+h(vr.des)+'</b></div></div>';
+      out+='</div>';
+    }
+  }
   if(d.details&&d.details.length){
     out+='<table class="det-tbl"><thead><tr><th>ทะเบียนรถ</th><th>เบอร์ตู้</th><th>โรงงาน</th><th>เข้าโรงงาน</th><th>DATE PICKUP</th><th>CADO</th></tr></thead><tbody>';
     d.details.forEach(r=>{
