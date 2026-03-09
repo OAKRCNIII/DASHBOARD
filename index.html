@@ -788,6 +788,27 @@ const PFXC={
   DEF:{bg:'#f1f5f9',tx:'#475569',bd:'#e2e8f0'}
 };
 function pst(pfx){return PFXC[pfx]||PFXC.DEF;}
+/* อินวอยซ์เดือนมกราคม 2026 ที่จัดลงเรือแล้วแต่ไม่มีข้อมูลในไฟล์ VESSEL
+   (ระบุรายอินวอยซ์เพื่อป้องกัน false match กับมกราคมปีอื่น) */
+const PRE_LOADED_INV=new Set([
+  'INV001/015/2025(B)','BSW-J-01/2026','BSW-T-01/2026','OGM(A)001/2026',
+  'BSW-L-01/2026','INV002/001/2026(A)','TWI60/060/10/25','OGM(A)002/2026',
+  'BSW-L-02/2026','SHL-250904-1','INV002/001/2026(B)','OGM(A)003/2026',
+  'ANTS-JM001/2026','ANTS-JM002/2026','TWI57/059/23/25','BSW-T-02/2026',
+  'OGM(A)004/2026','BSW-L-03/2026','INV001/001/2026','TWI01/049/01/26',
+  'OGM(A)005/2026','BSW-L-04/2026','TWI63/060/11/25','OGM(A)006/2026',
+  'SHL-251203','ANTS-JM003/2026','TWI61/025/01/26','BSW-J-02/2026',
+  'SJ-SN6901002-2026','OGM(A)007/2026','OGM(A)008/2026'
+].map(s=>normInv(s)));
+/* เช็คว่าอินวอยซ์นี้จัดลงเรือแล้วหรือยัง
+   - เช็คจาก PRE_LOADED_INV (มกราคม 2026 ที่ยืนยันแล้ว)
+   - เช็คจาก VESSEL data ด้วย normInv */
+function isVesselLoaded(inv){
+  const k=normInv(inv);
+  if(PRE_LOADED_INV.has(k))return true;
+  if(!VESSEL||!VESSEL.length)return false;
+  return VESSEL.some(r=>normInv(r.inv)===k);
+}
 function switchTab(tab){
   curTab=tab;
   ['main','pending','stock','factory','vessel'].forEach(t=>{
@@ -812,11 +833,13 @@ function renderStatsMain(){
   const pendingCnt=FLAT.filter(d=>d.doc_status!=='ปล่อยเอกสารแล้ว'&&d.total_expected>0&&d.total_actual<d.total_expected&&d.month!=='1').length;
   const ctrDoneNoDoc=FLAT.filter(d=>d.doc_status!=='ปล่อยเอกสารแล้ว'&&(d.total_expected===0||d.total_actual>=d.total_expected)).length;
   const totalNotRel=pendingCnt+ctrDoneNoDoc;
+  const notLoadedCnt=FLAT.filter(d=>!isVesselLoaded(d.inv)).length;
   document.getElementById('sBar').innerHTML=
     kc('อินวอยซ์ทั้งหมด',ti,'รายการ','#2b6cb0',null)+
     kc('ปล่อยเอกสารแล้ว',rel,relCtr+' ตู้','#16a34a',null)+
     kc('คงค้าง',pendingCnt,'ตู้ยังไม่ครบ','#d97706','pending')+
-    kc('ตู้ครบ รอปล่อยเอกสาร',ctrDoneNoDoc,'อินวอยซ์','#7c3aed','ctr-done');
+    kc('ตู้ครบ รอปล่อยเอกสาร',ctrDoneNoDoc,'อินวอยซ์','#7c3aed','ctr-done')+
+    kc('ยังไม่จัดลงเรือ',notLoadedCnt,'รายการ','#dc2626',null);
   const pb=document.getElementById('pBadge');if(pb)pb.textContent=totalNotRel||'';
   const mb=document.getElementById('mBadge');if(mb){mb.textContent=totalNotRel||'';mb.style.display=totalNotRel?'inline':'none';}
 }
@@ -1006,7 +1029,10 @@ function selPrefix(m,pfx){
     const badge=docOk?'<span class="ir-badge" style="background:#dcfce7;color:#166534">✔</span>':
       (ctrOk?'<span class="ir-badge" style="background:#ede9fe;color:#7c3aed">~</span>':
       '<span class="ir-badge" style="background:#fee2e2;color:#991b1b">'+d.total_actual+'/'+d.total_expected+'</span>');
-    out+='<div class="ir" data-id="'+d.id+'"><span class="ir-inv">'+h(d.inv)+'</span>'+badge+'</div>';
+    const vslBadge=isVesselLoaded(d.inv)
+      ?'<span class="ir-badge" style="background:#e0f2fe;color:#0369a1;font-size:10px;">🚢 จัดแล้ว</span>'
+      :'<span class="ir-badge" style="background:#fef9c3;color:#92400e;font-size:10px;">⚓ ยังไม่จัด</span>';
+    out+='<div class="ir" data-id="'+d.id+'"><span class="ir-inv">'+h(d.inv)+'</span>'+badge+vslBadge+'</div>';
   });
   document.getElementById('mBody').innerHTML=out;
   document.getElementById('dPanel').innerHTML='<div class="placeholder"><div class="icon">👈</div><p>เลือกอินวอยซ์</p></div>';
@@ -1034,7 +1060,10 @@ function selFactory(pfx){
       (ctrOk?'<span class="ir-badge" style="background:#ede9fe;color:#7c3aed">~</span>':
       '<span class="ir-badge" style="background:#fee2e2;color:#991b1b">'+d.total_actual+'/'+d.total_expected+'</span>');
     const mLabel='<span style="font-size:9px;color:#94a3b8;margin-left:4px;">'+MF[d.month]+'</span>';
-    out+='<div class="ir" data-id="'+d.id+'"><span class="ir-inv">'+h(d.inv)+'</span>'+badge+mLabel+'</div>';
+    const vslBadge=isVesselLoaded(d.inv)
+      ?'<span class="ir-badge" style="background:#e0f2fe;color:#0369a1;font-size:10px;">🚢 จัดแล้ว</span>'
+      :'<span class="ir-badge" style="background:#fef9c3;color:#92400e;font-size:10px;">⚓ ยังไม่จัด</span>';
+    out+='<div class="ir" data-id="'+d.id+'"><span class="ir-inv">'+h(d.inv)+'</span>'+badge+vslBadge+mLabel+'</div>';
   });
   document.getElementById('mBody').innerHTML=out||'<div style="padding:12px;color:#94a3b8;font-size:12px;">ไม่พบข้อมูล</div>';
   document.getElementById('dPanel').innerHTML='<div class="placeholder"><div class="icon">👈</div><p>เลือกอินวอยซ์</p></div>';
