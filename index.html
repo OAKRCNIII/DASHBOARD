@@ -519,43 +519,52 @@ function parseDatabase(sheet){
   }
   return map;
 }
-function parseBkg(sheet){
-  if(!sheet)return{containers:[],bkgGroups:[],stats:{total:0,used:0,available:0,mmfAvail:0,pipAvail:0}};
+function parseBkgSheet(wb,sheetName,status){
+  const sheet=wb.Sheets[sheetName];
+  if(!sheet)return[];
   const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false});
-  const hi=findHdrRow(rows,['CTR NUMBER','E#BKG','LINER','BKG']);
+  const hi=findHdrRow(rows,['CTR NUMBER','E#BKG','NO.']);
   const hdr=rows[hi].map(c=>String(c||'').trim());
   const iNo=colOf(hdr,['NO.','NO']);
   const iBkg=colOf(hdr,['E#BKG','BKG']);
   const iCtr=colOf(hdr,['CTR NUMBER']);
   const iLiner=colOf(hdr,['LINER']);
   const iLock=colOf(hdr,['LOCK FOR','LOCK']);
-  const iStat=colOf(hdr,['STATUS']);
-  const containers=[];
+  const out=[];
   for(let i=hi+1;i<rows.length;i++){
     const r=rows[i];
-    if(!r[iBkg]&&!r[iCtr])continue;
-    const bkg=String(r[iBkg]||'').trim();
-    if(!bkg)continue;
-    containers.push({no:String(r[iNo]||'').trim(),bkg,
-      ctrNum:String(r[iCtr]||'').trim(),liner:String(r[iLiner]||'').trim(),
-      lockFor:String(r[iLock]||'').trim(),status:String(r[iStat]||'').trim()});
+    const ctr=String(r[iCtr]||'').trim();
+    if(!ctr)continue;
+    out.push({no:String(r[iNo]||'').trim(),bkg:String(r[iBkg]||'').trim(),
+      ctrNum:ctr,liner:String(r[iLiner]||'').trim(),
+      lockFor:String(r[iLock]||'').trim(),status});
   }
+  return out;
+}
+function parseBkg(wb){
+  /* อ่านจาก Sheet "BKG AVA ALL" และ "BKG USED ALL" แยกกัน */
+  const avaName=wb.SheetNames.find(n=>n.toUpperCase().includes('AVA ALL'))||null;
+  const usedName=wb.SheetNames.find(n=>n.toUpperCase().includes('USED ALL'))||null;
+  const ava=avaName?parseBkgSheet(wb,avaName,'AVAILABLE'):[];
+  const used=usedName?parseBkgSheet(wb,usedName,'USED'):[];
+  const containers=[...ava,...used];
+  if(!containers.length)return{containers:[],bkgGroups:[],stats:{total:0,used:0,available:0,mmfAvail:0,pipAvail:0}};
   const bkgMap={};
   containers.forEach(c=>{
-    const k=c.bkg||c.no;
-    if(!bkgMap[k])bkgMap[k]={no:c.no,lockFor:c.lockFor,liner:c.liner,containers:[],used:0,available:0,total:0};
+    const k=c.no||c.bkg;if(!k)return;
+    if(!bkgMap[k])bkgMap[k]={no:k,bkg:c.bkg,lockFor:c.lockFor,liner:c.liner,containers:[],used:0,available:0,total:0};
     bkgMap[k].containers.push(c);
     bkgMap[k].total++;
-    if(c.status.toUpperCase()==='USED')bkgMap[k].used++;
+    if(c.status==='USED')bkgMap[k].used++;
     else bkgMap[k].available++;
   });
-  const bkgGroups=Object.entries(bkgMap).map(([no,v])=>({no,...v}));
+  const bkgGroups=Object.values(bkgMap);
   const total=containers.length;
-  const used=containers.filter(c=>c.status.toUpperCase()==='USED').length;
-  const available=total-used;
-  const mmfAvail=containers.filter(c=>c.status.toUpperCase()!=='USED'&&c.lockFor.toUpperCase().includes('MMF')).length;
-  const pipAvail=containers.filter(c=>c.status.toUpperCase()!=='USED'&&c.lockFor.toUpperCase().includes('PIP')).length;
-  return{containers,bkgGroups,stats:{total,used,available,mmfAvail,pipAvail}};
+  const usedCnt=used.length;
+  const available=ava.length;
+  const mmfAvail=ava.filter(c=>c.lockFor.toUpperCase().includes('MMF')).length;
+  const pipAvail=ava.filter(c=>c.lockFor.toUpperCase().includes('PIP')).length;
+  return{containers,bkgGroups,stats:{total,used:usedCnt,available,mmfAvail,pipAvail}};
 }
 function buildFlat(allInv,dbMap){
   function norm(s){return s.replace(/\s+/g,'').toUpperCase();}
@@ -590,8 +599,7 @@ async function loadData(){
   const dbMap=parseDatabase(invWb.Sheets[dbSheet]);
   const {byMonth,flat}=buildFlat(allInv,dbMap);
   const bkgWb=XLSX.read(bkgBuf,{type:'array'});
-  const bkgSheet=bkgWb.SheetNames.find(n=>n.toUpperCase().includes('BKG'))||bkgWb.SheetNames[0];
-  const stockData=parseBkg(bkgWb.Sheets[bkgSheet]);
+  const stockData=parseBkg(bkgWb);
   return{byMonth,flat,stock:stockData};
 }
 /* ===================================================
