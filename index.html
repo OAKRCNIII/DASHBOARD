@@ -270,6 +270,11 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;fo
       <input class="setup-input" id="inVslPath" type="text" placeholder="/ชื่อโฟลเดอร์/VESSEL_MANAGE.xlsm">
       <div class="setup-hint">พาธไฟล์ข้อมูลเรือใน Dropbox (Sheet: DATABASE_VESSEL)</div>
     </div>
+    <div class="setup-section">
+      <div class="setup-label">พาธไฟล์ STATEMENT (.xlsm)</div>
+      <input class="setup-input" id="inStmPath" type="text" placeholder="/ชื่อโฟลเดอร์/SU_STATEMENT.xlsm">
+      <div class="setup-hint">พาธไฟล์ยอดเงิน OCF/TLX ใน Dropbox (Sheet: STATEMENT)</div>
+    </div>
     <button class="setup-btn" id="connectBtn">🔗 เชื่อมต่อ Dropbox</button>
     <div id="setupErr" style="font-size:11px;color:#dc2626;text-align:center;margin-top:8px;display:none;"></div>
   </div>
@@ -572,6 +577,47 @@ function parseDatabase(sheet){
   }
   return map;
 }
+function parseStatement(sheet){
+  /* อ่าน Sheet STATEMENT: NO., DATE, TYPE, DESCRIPTION, ..., IN(RM), OUT(RM), BALANCE
+     TYPE: OCF → ค่าระวาง, TLX → ค่า Telex
+     DESCRIPTION ของ TLX จะขึ้นต้นด้วย "TLX-"
+     คืน map { normInv: { ocf, ocfNo, ocfDate, tlx, tlxNo, tlxDate } }
+  */
+  if(!sheet)return{};
+  const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false,cellDates:true});
+  const hi=findHdrRow(rows,['TYPE','DESCRIPTION','OUT']);
+  const hdr=rows[hi].map(c=>String(c||'').trim().toUpperCase());
+  const iNo=hdr.findIndex(h2=>h2==='NO.');
+  const iDate=hdr.findIndex(h2=>h2==='DATE');
+  const iType=hdr.findIndex(h2=>h2==='TYPE');
+  const iDesc=hdr.findIndex(h2=>h2.includes('DESCRIPTION'));
+  const iOut=hdr.findIndex(h2=>h2.includes('OUT'));
+  function normInv(s2){return s2.replace(/\s+/g,'').toUpperCase();}
+  const map={};
+  for(let i=hi+1;i<rows.length;i++){
+    const r=rows[i];
+    const type=String(r[iType]||'').trim().toUpperCase();
+    const desc=String(r[iDesc]||'').trim();
+    const out=parseFloat(r[iOut])||0;
+    const no=String(r[iNo]||'').trim();
+    const dt=fmtExcelDate(r[iDate]);
+    if(type==='OCF'&&desc&&desc!=='BALANCE'){
+      const key=normInv(desc);
+      if(!map[key])map[key]={ocf:0,ocfNo:'',ocfDate:'',tlx:0,tlxNo:'',tlxDate:''};
+      map[key].ocf=out;
+      map[key].ocfNo=no&&no!=='0'?no:'';
+      map[key].ocfDate=dt;
+    }else if(type==='TLX'&&desc.toUpperCase().startsWith('TLX-')){
+      const invPart=desc.substring(4);
+      const key=normInv(invPart);
+      if(!map[key])map[key]={ocf:0,ocfNo:'',ocfDate:'',tlx:0,tlxNo:'',tlxDate:''};
+      map[key].tlx=out;
+      map[key].tlxNo=no&&no!=='0'?no:'';
+      map[key].tlxDate=dt;
+    }
+  }
+  return map;
+}
 function parseVesselDb(sheet){
   /* อ่าน Sheet DATABASE_VESSEL: NO., INV NUM, DES., BKG NO., VOL, VESSEL, DATE */
   if(!sheet)return[];
@@ -672,10 +718,13 @@ async function loadData(){
   const invPath=ls('dbx_inv_path');
   const bkgPath=ls('dbx_bkg_path');
   const vslPath=ls('dbx_vsl_path');
+  const stmPath=ls('dbx_stm_path');
   if(!invPath||!bkgPath)throw new Error('ไม่พบพาธไฟล์ กรุณาตั้งค่าใหม่');
-  /* ดาวน์โหลด 2 ไฟล์หลักพร้อมกัน + ไฟล์เรือ (ถ้ามี) */
+  /* ดาวน์โหลดไฟล์หลักพร้อมกัน + ไฟล์เรือ + ไฟล์ statement (ถ้ามี) */
   const downloads=[dbxDownload(invPath),dbxDownload(bkgPath)];
-  if(vslPath)downloads.push(dbxDownload(vslPath));
+  const hasvsl=!!vslPath; const hasstm=!!stmPath;
+  if(hasvsl)downloads.push(dbxDownload(vslPath));
+  if(hasstm)downloads.push(dbxDownload(stmPath));
   const bufs=await Promise.all(downloads);
   setLoad('กำลังประมวลผลข้อมูล...');
   const invWb=XLSX.read(bufs[0],{type:'array',cellDates:true});
@@ -686,18 +735,25 @@ async function loadData(){
   const {byMonth,flat}=buildFlat(allInv,dbMap);
   const bkgWb=XLSX.read(bufs[1],{type:'array'});
   const stockData=parseBkg(bkgWb);
-  let vesselData=[];
-  if(vslPath&&bufs[2]){
-    const vslWb=XLSX.read(bufs[2],{type:'array',cellDates:true});
+  let vesselData=[];let feesData={};
+  let bi=2;
+  if(hasvsl&&bufs[bi]){
+    const vslWb=XLSX.read(bufs[bi],{type:'array',cellDates:true});
     const vslSheet=vslWb.Sheets['DATABASE_VESSEL']||vslWb.Sheets[vslWb.SheetNames.find(n=>n.toUpperCase().includes('DATABASE_VESSEL'))]||null;
     if(vslSheet)vesselData=parseVesselDb(vslSheet);
+    bi++;
   }
-  return{byMonth,flat,stock:stockData,vessel:vesselData};
+  if(hasstm&&bufs[bi]){
+    const stmWb=XLSX.read(bufs[bi],{type:'array',cellDates:true});
+    const stmSheet=stmWb.Sheets['STATEMENT']||stmWb.Sheets[stmWb.SheetNames.find(n=>n.toUpperCase().includes('STATEMENT'))]||null;
+    if(stmSheet)feesData=parseStatement(stmSheet);
+  }
+  return{byMonth,flat,stock:stockData,vessel:vesselData,fees:feesData};
 }
 /* ===================================================
    DASHBOARD STATE & RENDER
 =================================================== */
-let FLAT=[],BY_MONTH={},STOCK={bkgGroups:[],stats:{}},VESSEL=[];
+let FLAT=[],BY_MONTH={},STOCK={bkgGroups:[],stats:{}},VESSEL=[],FEES={};
 let curTab='main',SM=null,SP=null,SI=null,activePV=null,activeBkg=null,factoryDateFrom=0,factoryDateTo=0;
 const MF={'1':'ม.ค.','2':'ก.พ.','3':'มี.ค.','4':'เม.ย.','-':'ไม่ระบุ'};
 const PFXC={
@@ -746,13 +802,22 @@ function renderStatsStock(){
     kc('ลานตู้ PIP',s.pipAvail||0,'ตู้ว่าง','#14532d',null);
 }
 function renderStatsVessel(){
-  /* จัดกลุ่มตามชื่อเรือ นับอินวอยซ์ + ตู้ */
   const vesselNames=[...new Set(VESSEL.map(r=>r.vessel))];
   const totalVol=VESSEL.reduce((a,r)=>a+r.vol,0);
-  document.getElementById('sBar').innerHTML=
-    kc('เรือทั้งหมด',vesselNames.length,'รอบการส่ง','#2b6cb0',null)+
-    kc('อินวอยซ์ทั้งหมด',VESSEL.length,'ที่จัดขึ้นเรือแล้ว','#16a34a',null)+
-    kc('ตู้รวมทั้งหมด',totalVol,'ตู้','#7c3aed',null);
+  function normI2(s2){return s2.replace(/\s+/g,'').toUpperCase();}
+  let totalOcf=0,totalTlx=0;
+  VESSEL.forEach(r=>{const f=FEES[normI2(r.inv)];if(f){totalOcf+=f.ocf||0;totalTlx+=f.tlx||0;}});
+  const totalFees=totalOcf+totalTlx;
+  const fmtRM=n=>n>0?n.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2}):'-';
+  let bar=kc('เรือทั้งหมด',vesselNames.length,'รอบการส่ง','#2b6cb0',null)+
+    kc('อินวอยซ์',VESSEL.length,'ที่จัดขึ้นเรือแล้ว','#16a34a',null)+
+    kc('ตู้รวม',totalVol,'ตู้','#7c3aed',null);
+  if(totalFees>0){
+    bar+=kc('ค่าระวาง OCF',fmtRM(totalOcf)+' RM','ทั้งหมด','#16a34a',null)+
+         kc('ค่า TLX',fmtRM(totalTlx)+' RM','ทั้งหมด','#2563eb',null)+
+         kc('รวมทั้งสิ้น',fmtRM(totalFees)+' RM','OCF+TLX','#dc2626',null);
+  }
+  document.getElementById('sBar').innerHTML=bar;
 }
 function renderVesselView(){
   if(!VESSEL.length){
@@ -772,23 +837,59 @@ function renderVesselView(){
     const da=parsePickupDate(a.date),db2=parsePickupDate(b.date);
     return da-db2;
   });
+  const hasFees=Object.keys(FEES).length>0;
+  function fmtRM(n){return n>0?n.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2}):'-';}
+  function normI(s2){return s2.replace(/\s+/g,'').toUpperCase();}
   let out='';
   sorted.forEach(g=>{
+    /* คำนวณ fees ของเรือลำนี้ */
+    let sumOcf=0,sumTlx=0;
+    g.rows.forEach(r=>{const f=FEES[normI(r.inv)];if(f){sumOcf+=f.ocf||0;sumTlx+=f.tlx||0;}});
+    const sumTotal=sumOcf+sumTlx;
     out+='<div class="vessel-card">';
     out+='<div class="vessel-head"><span class="vessel-name">🚢 '+h(g.vessel)+'</span>';
-    out+='<div style="display:flex;gap:6px;align-items:center;">';
+    out+='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">';
     out+='<span class="vessel-date-badge">📅 '+h(g.date)+'</span>';
     out+='<span class="vessel-summary">'+g.rows.length+' INV · '+g.totalVol+' ตู้</span>';
+    if(hasFees&&sumTotal>0)out+='<span class="vessel-summary">💰 '+fmtRM(sumTotal)+' RM</span>';
     out+='</div></div>';
-    out+='<table class="vtbl"><thead><tr><th>#</th><th>อินวอยซ์</th><th>ปลายทาง</th><th>BKG NO.</th><th style="text-align:center;">ตู้</th></tr></thead><tbody>';
+    /* ตาราง */
+    const feeHdr=hasFees?'<th style="text-align:right;">OCF (RM)</th><th style="text-align:right;">TLX (RM)</th>':'';
+    out+='<table class="vtbl"><thead><tr><th>#</th><th>อินวอยซ์</th><th>ปลายทาง</th><th>BKG NO.</th><th style="text-align:center;">ตู้</th>'+feeHdr+'</tr></thead><tbody>';
     g.rows.forEach((r,idx)=>{
       const pfx=r.inv.substring(0,3);const s=pst(pfx);
       out+='<tr><td style="color:#94a3b8;font-size:11px;">'+(idx+1)+'</td>';
       out+='<td class="inv-cell"><span class="finv-badge" style="background:'+s.bg+';color:'+s.tx+';border:1px solid '+s.bd+'">'+h(pfx)+'</span>'+h(r.inv)+'</td>';
       out+='<td class="des-cell">'+h(r.des)+'</td>';
       out+='<td class="bkg-cell">'+h(r.bkg)+'</td>';
-      out+='<td class="vol-cell">'+r.vol+'</td></tr>';
+      out+='<td class="vol-cell">'+r.vol+'</td>';
+      if(hasFees){
+        const f=FEES[normI(r.inv)]||{};
+        const ocfAmt=f.ocf||0;const tlxAmt=f.tlx||0;
+        const ocfTxt=ocfAmt>0
+          ?'<span style="color:#16a34a;font-weight:700;">'+fmtRM(ocfAmt)+'</span>'+(f.ocfNo?'<br><span style="font-size:9px;color:#94a3b8;">#'+h(f.ocfNo)+'</span>':'')
+          :'<span style="color:#dc2626;font-size:10px;">ยังไม่จ่าย</span>';
+        const tlxTxt=tlxAmt>0
+          ?'<span style="color:#2563eb;font-weight:700;">'+fmtRM(tlxAmt)+'</span>'+(f.tlxNo?'<br><span style="font-size:9px;color:#94a3b8;">#'+h(f.tlxNo)+'</span>':'')
+          :'<span style="color:#94a3b8;font-size:10px;">-</span>';
+        out+='<td style="text-align:right;white-space:nowrap;">'+ocfTxt+'</td>';
+        out+='<td style="text-align:right;white-space:nowrap;">'+tlxTxt+'</td>';
+      }
+      out+='</tr>';
     });
+    /* แถว SUM */
+    if(hasFees){
+      const colSpan=5;
+      out+='<tr style="background:#f0f9ff;border-top:2px solid #bfdbfe;">';
+      out+='<td colspan="'+colSpan+'" style="text-align:right;font-weight:700;font-size:11px;color:#1e40af;padding:8px 12px;">รวมเรือลำนี้</td>';
+      out+='<td style="text-align:right;padding:8px 12px;"><span style="font-weight:800;color:#16a34a;">'+fmtRM(sumOcf)+'</span></td>';
+      out+='<td style="text-align:right;padding:8px 12px;"><span style="font-weight:800;color:#2563eb;">'+fmtRM(sumTlx)+'</span></td>';
+      out+='</tr>';
+      out+='<tr style="background:#dbeafe;">';
+      out+='<td colspan="'+colSpan+'" style="text-align:right;font-weight:700;font-size:11px;color:#1e40af;padding:6px 12px;">รวม OCF+TLX</td>';
+      out+='<td colspan="2" style="text-align:right;padding:6px 12px;font-weight:800;font-size:13px;color:#1e3a8a;">'+fmtRM(sumTotal)+' RM</td>';
+      out+='</tr>';
+    }
     out+='</tbody></table></div>';
   });
   document.getElementById('vesselWrap').innerHTML=out;
@@ -1046,12 +1147,12 @@ function showSetup(errMsg){
   document.getElementById('setupScreen').style.display='flex';
   if(errMsg){document.getElementById('setupErr').textContent=errMsg;document.getElementById('setupErr').style.display='block';}
   document.getElementById('thisUrl').textContent=window.location.origin+window.location.pathname;
-  const saved=['dbx_app_key','dbx_inv_path','dbx_bkg_path','dbx_vsl_path'];
-  const ids=['inAppKey','inInvPath','inBkgPath','inVslPath'];
+  const saved=['dbx_app_key','dbx_inv_path','dbx_bkg_path','dbx_vsl_path','dbx_stm_path'];
+  const ids=['inAppKey','inInvPath','inBkgPath','inVslPath','inStmPath'];
   saved.forEach((k,i)=>{const v=ls(k);if(v)document.getElementById(ids[i]).value=v;});
 }
 function showDashboard(data){
-  FLAT=data.flat;BY_MONTH=data.byMonth;STOCK=data.stock;VESSEL=data.vessel||[];
+  FLAT=data.flat;BY_MONTH=data.byMonth;STOCK=data.stock;VESSEL=data.vessel||[];FEES=data.fees||{};
   hide('loadScreen');
   document.getElementById('app').style.display='flex';
   const now=new Date();
@@ -1095,8 +1196,10 @@ document.getElementById('connectBtn').addEventListener('click',async()=>{
   if(!appKey){document.getElementById('setupErr').textContent='กรุณาใส่ App Key';document.getElementById('setupErr').style.display='block';return;}
   if(!invPath||!bkgPath){document.getElementById('setupErr').textContent='กรุณาใส่พาธไฟล์ทั้ง 2 ไฟล์';document.getElementById('setupErr').style.display='block';return;}
   const vslPath=document.getElementById('inVslPath').value.trim();
+  const stmPath=document.getElementById('inStmPath').value.trim();
   ls('dbx_app_key',appKey);ls('dbx_inv_path',invPath);ls('dbx_bkg_path',bkgPath);
   if(vslPath)ls('dbx_vsl_path',vslPath);
+  if(stmPath)ls('dbx_stm_path',stmPath);
   await startAuth();
 });
 document.getElementById('refreshBtn').addEventListener('click',async()=>{
