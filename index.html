@@ -577,14 +577,16 @@ function parseDatabase(sheet){
   }
   return map;
 }
-/* normInv ใช้ร่วมกันทั้งไฟล์ — ลบ space, () suffix, uppercase */
+/* normInv ใช้ร่วมกันทั้งไฟล์ — ลบเฉพาะ space + zero-width chars, uppercase */
 function normInv(s2){
   return String(s2||'')
-    .replace(/\([^)]*\)/g,'')   /* ลบ (TWI63), (B), (A) ออก */
     .replace(/\s+/g,'')          /* ลบช่องว่าง */
     .replace(/[\u200B-\u200D\uFEFF]/g,'') /* ลบ zero-width chars */
     .toUpperCase();
 }
+/* เรือที่จ่ายค่าระวางก่อนมีไฟล์ Statement — ถ้าไม่มีข้อมูลให้แสดง "จ่ายแล้ว"
+   ใช้ชื่อเต็มตรงๆ (exact match, case-insensitive) — ป้องกัน false match เช่น MONICA 220V */
+const PRE_PAID_VESSELS=['MONICA 019N','OOCL ZHOUSHAN 292N'];
 function parseStatement(sheet){
   /* อ่าน Sheet STATEMENT: NO., DATE, TYPE, DESCRIPTION, ..., IN(RM), OUT(RM), BALANCE
      TYPE: OCF → ค่าระวาง, TLX → ค่า Telex
@@ -640,7 +642,7 @@ function parseStatement(sheet){
 function parseVesselDb(sheet){
   /* อ่าน Sheet DATABASE_VESSEL: NO., INV NUM, DES., BKG NO., VOL, VESSEL, DATE */
   if(!sheet)return[];
-  const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false,cellDates:true});
+  const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:true,cellDates:true});
   const hi=findHdrRow(rows,['INV NUM','VESSEL']);
   const hdr=rows[hi].map(c=>String(c||'').trim().toUpperCase());
   const iInv=hdr.findIndex(h2=>h2.includes('INV NUM')||h2==='INV NUM');
@@ -907,12 +909,17 @@ function renderVesselView(){
       if(hasFees){
         const f=FEES[normInv(r.inv)]||{};
         const ocfAmt=f.ocf||0;const tlxAmt=f.tlx||0;
+        const isPrePaid=PRE_PAID_VESSELS.some(v=>g.vessel.trim().toUpperCase()===v.toUpperCase());
         const ocfTxt=ocfAmt>0
           ?'<span style="color:#16a34a;font-weight:700;">'+fmtRM(ocfAmt)+'</span>'+(f.ocfNo?'<br><span style="font-size:9px;color:#94a3b8;">#'+h(f.ocfNo)+'</span>':'')
-          :'<span style="color:#dc2626;font-size:10px;">ยังไม่จ่าย</span>';
+          :isPrePaid
+            ?'<span style="color:#7c3aed;font-size:10px;font-weight:600;">✓ จ่ายแล้ว</span>'
+            :'<span style="color:#dc2626;font-size:10px;">ยังไม่จ่าย</span>';
         const tlxTxt=tlxAmt>0
           ?'<span style="color:#2563eb;font-weight:700;">'+fmtRM(tlxAmt)+'</span>'+(f.tlxNo?'<br><span style="font-size:9px;color:#94a3b8;">#'+h(f.tlxNo)+'</span>':'')
-          :'<span style="color:#94a3b8;font-size:10px;">-</span>';
+          :isPrePaid
+            ?'<span style="color:#7c3aed;font-size:10px;font-weight:600;">✓ จ่ายแล้ว</span>'
+            :'<span style="color:#94a3b8;font-size:10px;">-</span>';
         out+='<td style="text-align:right;white-space:nowrap;">'+ocfTxt+'</td>';
         out+='<td style="text-align:right;white-space:nowrap;">'+tlxTxt+'</td>';
       }
