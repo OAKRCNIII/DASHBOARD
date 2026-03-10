@@ -514,10 +514,59 @@ async function getToken(){
   if(!tok)throw new Error('Token หมดอายุ กรุณาเชื่อมต่อใหม่');
   return tok;
 }
+/* ===== IndexedDB FILE CACHE ===== */
+let _idb=null;
+function openFileDB(){
+  if(_idb)return Promise.resolve(_idb);
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open('dbx_filecache',1);
+    req.onupgradeneeded=e=>{e.target.result.createObjectStore('files',{keyPath:'path'});};
+    req.onsuccess=e=>{_idb=e.target.result;res(_idb);};
+    req.onerror=e=>rej(e);
+  });
+}
+function idbGet(db,path){
+  return new Promise(res=>{
+    db.transaction('files','readonly').objectStore('files').get(path).onsuccess=e=>res(e.target.result||null);
+  });
+}
+function idbPut(db,path,modified,buf){
+  return new Promise(res=>{
+    const tx=db.transaction('files','readwrite');
+    tx.objectStore('files').put({path,modified,buf});
+    tx.oncomplete=()=>res();
+  });
+}
+async function dbxMeta(path,token){
+  try{
+    const r=await fetch('https://api.dropboxapi.com/2/files/get_metadata',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+      body:JSON.stringify({path})
+    });
+    if(!r.ok)return null;
+    const d=await r.json();
+    return d.server_modified||null;
+  }catch{return null;}
+}
+
+let _forceReload=false; /* กด 🔄 รีเฟรช = bypass cache ครั้งเดียว */
+
 async function dbxDownload(path){
-  setLoad('กำลังดาวน์โหลด: '+path.split('/').pop());
+  const name=path.split('/').pop();
   const token=await getToken();
-  /* ใช้ encodeDropboxArg() แทน JSON.stringify() เพื่อรองรับพาธภาษาไทย */
+  /* ถ้าไม่ force reload: เช็ก metadata ก่อน แล้วเทียบกับ cache */
+  if(!_forceReload){
+    try{
+      const db=await openFileDB();
+      const [meta,cached]=await Promise.all([dbxMeta(path,token),idbGet(db,path)]);
+      if(cached&&meta&&cached.modified===meta){
+        setLoad('✅ ใช้แคช: '+name);
+        return cached.buf;
+      }
+    }catch(e){/* cache miss — ดาวน์โหลดปกติ */}
+  }
+  setLoad('⬇️ ดาวน์โหลด: '+name);
   const resp=await fetch('https://content.dropboxapi.com/2/files/download',{
     method:'POST',
     headers:{
@@ -529,7 +578,14 @@ async function dbxDownload(path){
     const err=await resp.text();
     throw new Error('ดาวน์โหลดไม่ได้: '+resp.status+' — '+path);
   }
-  return await resp.arrayBuffer();
+  const buf=await resp.arrayBuffer();
+  /* บันทึก cache ใน background */
+  try{
+    const db=await openFileDB();
+    const meta=await dbxMeta(path,token);
+    if(meta)idbPut(db,path,meta,buf.slice(0)); /* slice(0) = clone ก่อนเก็บ */
+  }catch{}
+  return buf;
 }
 /* ===================================================
    EXCEL PARSING
@@ -1563,6 +1619,7 @@ document.getElementById('connectBtn').addEventListener('click',async()=>{
   await startAuth();
 });
 document.getElementById('refreshBtn').addEventListener('click',async()=>{
+  _forceReload=true; /* bypass cache — ดาวน์โหลดใหม่ทุกไฟล์ */
   document.getElementById('app').style.display='none';
   document.getElementById('loadScreen').style.display='flex';
   document.getElementById('loadErr').style.display='none';
@@ -1571,6 +1628,7 @@ document.getElementById('refreshBtn').addEventListener('click',async()=>{
   setLoad('กำลังโหลดข้อมูลใหม่...');
   try{const data=await loadData();showDashboard(data);}
   catch(e){showErr(e.message);}
+  finally{_forceReload=false;}
 });
 document.getElementById('settingsBtn').addEventListener('click',()=>{
   if(confirm('ล้างการตั้งค่าและเชื่อมต่อ Dropbox ใหม่?')){
