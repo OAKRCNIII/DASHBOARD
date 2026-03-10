@@ -1231,7 +1231,7 @@ function renderFactoryView(){
       dateMap[dt][d.inv].push(row['ทะเบียนรถ']||'-');
     });
   });
-  let dates=Object.keys(dateMap).sort((a,b)=>parsePickupDate(a)-parsePickupDate(b));
+  let dates=Object.keys(dateMap).sort((a,b)=>parsePickupDate(b)-parsePickupDate(a));
   if(factoryDateFrom||factoryDateTo){
     dates=dates.filter(dt=>{const v=parsePickupDate(dt);if(!v)return false;
       if(factoryDateFrom&&v<factoryDateFrom)return false;if(factoryDateTo&&v>factoryDateTo)return false;return true;});
